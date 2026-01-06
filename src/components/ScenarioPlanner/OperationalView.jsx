@@ -556,7 +556,17 @@ const OperationalView = () => {
                             <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-tertiary)" vertical={false} />
                                 <XAxis dataKey="name" stroke="var(--text-secondary)" />
-                                <YAxis stroke="var(--text-secondary)" domain={[0, dataMax => Math.max(dataMax, maxCapacity * 1.1)]} />
+                                <YAxis
+                                    stroke="var(--text-secondary)"
+                                    domain={['auto', 'auto']}
+                                    tickFormatter={(value) => value.toLocaleString()}
+                                    label={{
+                                        value: 'Hours',
+                                        angle: -90,
+                                        position: 'insideLeft',
+                                        style: { textAnchor: 'middle', fill: 'var(--text-muted)' }
+                                    }}
+                                />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
                                     itemStyle={{ color: 'var(--text-primary)' }}

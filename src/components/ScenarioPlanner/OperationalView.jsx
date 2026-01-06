@@ -1,10 +1,11 @@
 import { useApp } from '../../context/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { CheckCircle, Circle, Trash2, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, Circle, Trash2, Plus, X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { addMonths, startOfMonth, endOfMonth, format, startOfWeek, endOfWeek, addWeeks, startOfQuarter, endOfQuarter, addQuarters } from 'date-fns';
 import NewProjectPane from '../NewProjectPane';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as XLSX from 'xlsx';
 
 // --- Constants for Role Distribution Heuristics ---
 const ROLE_DISTRIBUTION = {
@@ -37,6 +38,71 @@ const OperationalView = () => {
     // Available filter options
     const TEAMS = ['All', 'Website', 'Configurator', 'Asset Production'];
     const ROLES = ['All', 'Developer', 'Designer', 'Manager', 'QA', 'Product Owner'];
+
+    // Export to Excel handler
+    const handleExportToExcel = () => {
+        // Get selected projects
+        const selectedProjects = projects.filter(p => selectedProjectIds.includes(p.id));
+
+        // Sheet 1: Summary
+        const summaryData = [
+            ['Resource Forecast Report'],
+            ['Generated:', format(new Date(), 'yyyy-MM-dd HH:mm')],
+            [''],
+            ['Filters Applied:'],
+            ['Team:', selectedTeam],
+            ['Role:', selectedRole],
+            ['Time View:', timeView],
+            [''],
+            ['Summary:'],
+            ['Total Selected Projects:', selectedProjects.length],
+            ['Max Capacity (hours/period):', maxCapacity],
+            ['Total Periods in Forecast:', chartData.length]
+        ];
+
+        // Sheet 2: Forecast Data
+        const forecastHeaders = ['Period', 'Total Demand (hrs)', 'Max Capacity (hrs)', 'Utilization %', ...selectedProjects.map(p => p.name + ' (hrs)')];
+        const forecastRows = chartData.map(period => {
+            const utilization = maxCapacity > 0 ? Math.round((period.demand / maxCapacity) * 100) : 0;
+            return [
+                period.name,
+                Math.round(period.demand),
+                maxCapacity,
+                utilization + '%',
+                ...selectedProjects.map(p => Math.round(period[p.id] || 0))
+            ];
+        });
+        const forecastData = [forecastHeaders, ...forecastRows];
+
+        // Sheet 3: Project Details
+        const projectHeaders = ['Project Name', 'Type', 'Scale', 'Start Date', 'End Date', 'Duration (months)'];
+        const projectRows = selectedProjects.map(p => {
+            const startDate = new Date(p.startDate);
+            const endDate = new Date(p.endDate);
+            const months = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
+            return [p.name, p.type || 'N/A', p.scale || 'Medium', p.startDate, p.endDate, months];
+        });
+        const projectData = [projectHeaders, ...projectRows];
+
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+
+        const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+        ws1['!cols'] = [{ wch: 30 }, { wch: 30 }];
+        XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+        const ws2 = XLSX.utils.aoa_to_sheet(forecastData);
+        ws2['!cols'] = forecastHeaders.map(() => ({ wch: 18 }));
+        XLSX.utils.book_append_sheet(wb, ws2, 'Forecast Data');
+
+        const ws3 = XLSX.utils.aoa_to_sheet(projectData);
+        ws3['!cols'] = projectHeaders.map(() => ({ wch: 20 }));
+        XLSX.utils.book_append_sheet(wb, ws3, 'Project Details');
+
+        // Download file
+        const filename = `Resource_Forecast_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+        XLSX.writeFile(wb, filename);
+    };
 
     // Pre-calculate capacity issues for ALL filter combinations
     const capacityIssueMap = useMemo(() => {
@@ -547,6 +613,20 @@ const OperationalView = () => {
                                 style={{ border: '1px solid var(--bg-tertiary)' }}
                             >
                                 View Details
+                            </button>
+                            <button
+                                onClick={handleExportToExcel}
+                                className="btn btn-ghost"
+                                style={{
+                                    border: '1px solid var(--bg-tertiary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                                title="Export to Excel"
+                            >
+                                <Download size={16} />
+                                Export
                             </button>
                         </div>
                     </div>

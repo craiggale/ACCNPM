@@ -558,7 +558,7 @@ const OperationalView = () => {
                                 <XAxis dataKey="name" stroke="var(--text-secondary)" />
                                 <YAxis
                                     stroke="var(--text-secondary)"
-                                    domain={['auto', 'auto']}
+                                    domain={[0, (dataMax) => Math.max(dataMax, maxCapacity) * 1.1]}
                                     tickFormatter={(value) => value.toLocaleString()}
                                     label={{
                                         value: 'Hours',

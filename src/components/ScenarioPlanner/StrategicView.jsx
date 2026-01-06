@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import GanttChart from '../GanttChart';
 // Removed Recharts imports as they are now in PrimaryForecastChart
-import { Plus, Trash2, Zap, ArrowRight, BrainCircuit, RefreshCw, CheckCircle, Play, Filter, LayoutList, Calendar, BarChart2 } from 'lucide-react';
+import { Plus, Trash2, Zap, ArrowRight, BrainCircuit, RefreshCw, CheckCircle, Play, Filter, LayoutList, Calendar, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { addMonths, format, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { useApp } from '../../context/AppContext';
 import { ResolutionEngine, getRoleDistribution, normalizeRole } from '../../utils/ResolutionEngine';
@@ -25,6 +25,7 @@ const StrategicView = () => {
     const [viewRole, setViewRole] = useState('All');
     const [forecastView, setForecastView] = useState('Resource'); // 'Resource', 'Timeline', 'Priority'
     const [chartFocus, setChartFocus] = useState('Demand'); // 'Demand', 'Capacity'
+    const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
 
     // NEW: Comparison State
     const [activeSolutionId, setActiveSolutionId] = useState('current'); // 'current' or solution.id
@@ -239,90 +240,139 @@ const StrategicView = () => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: 'var(--spacing-lg)' }}>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: isPanelCollapsed ? '56px 1fr' : '350px 1fr',
+                gap: 'var(--spacing-lg)',
+                transition: 'grid-template-columns 0.3s ease'
+            }}>
 
                 {/* Left Panel: Sandbox Control */}
-                <div className="card">
-                    {/* ... Existing Sandbox Projects List ... (Reusing same UI) */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
-                        <h3 className="text-xl">Sandbox Projects</h3>
-                        <button className="btn btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} onClick={() => setIsAddingDraft(true)}>
-                            <Plus size={16} style={{ marginRight: '4px' }} /> Add Draft
-                        </button>
-                    </div>
-
-                    {isAddingDraft && (
-                        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <div className="card" style={{ width: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-                                <h3 className="text-xl" style={{ marginBottom: '1rem' }}>Add Draft Project</h3>
-                                <form onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const formData = new FormData(e.target);
-                                    handleAddDraft({
-                                        name: formData.get('name'),
-                                        type: formData.get('type'),
-                                        scale: formData.get('scale'),
-                                        startDate: formData.get('startDate'),
-                                        endDate: formData.get('endDate')
-                                    });
-                                }}>
-                                    {/* ... Reusing Form Fields ... */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <input name="name" className="input" placeholder="Project Name" required />
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <select name="type" className="input"><option value="Website">Website</option><option value="Configurator">Configurator</option></select>
-                                            <select name="scale" className="input"><option value="Small">Small</option><option value="Medium">Medium</option><option value="Large">Large</option></select>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                            <input name="startDate" type="date" className="input" required />
-                                            <input name="endDate" type="date" className="input" required />
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-                                            <button type="button" className="btn btn-ghost" onClick={() => setIsAddingDraft(false)}>Cancel</button>
-                                            <button type="submit" className="btn btn-primary">Add to Sandbox</button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                        {draftProjects.map(p => (
-                            <div key={p.id} style={{
-                                padding: 'var(--spacing-md)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px dashed var(--accent-primary)',
-                                backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                <div className="card" style={{
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease'
+                }}>
+                    {isPanelCollapsed ? (
+                        /* Collapsed State */
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            padding: 'var(--spacing-sm) 0',
+                            gap: 'var(--spacing-md)'
+                        }}>
+                            <button
+                                onClick={() => setIsPanelCollapsed(false)}
+                                className="btn-ghost"
+                                style={{ padding: '0.5rem' }}
+                                title="Expand Projects"
+                            >
+                                <ChevronRight size={20} />
+                            </button>
+                            <span style={{
+                                writingMode: 'vertical-lr',
+                                textOrientation: 'mixed',
+                                fontSize: '0.75rem',
+                                color: 'var(--text-muted)',
+                                letterSpacing: '0.05em'
                             }}>
-                                <div>
-                                    <div style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{p.name} <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.7 }}>DRAFT</span></div>
-                                    <div className="text-xs text-muted">{p.startDate} - {p.endDate} • {p.scale}</div>
+                                {draftProjects.length} Drafts
+                            </span>
+                        </div>
+                    ) : (
+                        /* Expanded State */
+                        <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
+                                <h3 className="text-xl">Sandbox Projects</h3>
+                                <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                                    <button className="btn btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} onClick={() => setIsAddingDraft(true)}>
+                                        <Plus size={16} style={{ marginRight: '4px' }} /> Add Draft
+                                    </button>
+                                    <button
+                                        onClick={() => setIsPanelCollapsed(true)}
+                                        className="btn-ghost"
+                                        style={{ padding: '0.25rem 0.5rem' }}
+                                        title="Collapse Panel"
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
                                 </div>
-                                <button onClick={() => removeDraft(p.id)} className="btn-ghost" style={{ padding: '4px' }}>
-                                    <Trash2 size={14} color="var(--text-muted)" />
-                                </button>
                             </div>
-                        ))}
-                        {draftProjects.length === 0 && (
-                            <p className="text-sm text-muted" style={{ fontStyle: 'italic', padding: '1rem', textAlign: 'center' }}>
-                                No draft projects. Add one to start simulating.
-                            </p>
-                        )}
-                        {/* Display Active Projects (Ghosted) */}
-                        <div style={{ borderTop: '1px solid var(--bg-tertiary)', marginTop: '1rem', paddingTop: '1rem' }}>
-                            <h4 className="text-sm font-medium text-muted">Active Projects</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '0.5rem', opacity: 0.6 }}>
-                                {currentSandboxProjects.filter(p => !p.isDraft).map(p => (
-                                    <div key={p.id} className="text-xs" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', textDecoration: p.status === 'Paused' ? 'line-through' : 'none', color: p.status === 'Paused' ? 'var(--text-muted)' : 'inherit' }}>
-                                        <span>{p.name}</span>
-                                        {p.status === 'Paused' && <span>PAUSED</span>}
+
+                            {isAddingDraft && (
+                                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                    <div className="card" style={{ width: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+                                        <h3 className="text-xl" style={{ marginBottom: '1rem' }}>Add Draft Project</h3>
+                                        <form onSubmit={(e) => {
+                                            e.preventDefault();
+                                            const formData = new FormData(e.target);
+                                            handleAddDraft({
+                                                name: formData.get('name'),
+                                                type: formData.get('type'),
+                                                scale: formData.get('scale'),
+                                                startDate: formData.get('startDate'),
+                                                endDate: formData.get('endDate')
+                                            });
+                                        }}>
+                                            {/* ... Reusing Form Fields ... */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                <input name="name" className="input" placeholder="Project Name" required />
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                                    <select name="type" className="input"><option value="Website">Website</option><option value="Configurator">Configurator</option></select>
+                                                    <select name="scale" className="input"><option value="Small">Small</option><option value="Medium">Medium</option><option value="Large">Large</option></select>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                                    <input name="startDate" type="date" className="input" required />
+                                                    <input name="endDate" type="date" className="input" required />
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                                                    <button type="button" className="btn btn-ghost" onClick={() => setIsAddingDraft(false)}>Cancel</button>
+                                                    <button type="submit" className="btn btn-primary">Add to Sandbox</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                                {draftProjects.map(p => (
+                                    <div key={p.id} style={{
+                                        padding: 'var(--spacing-md)',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px dashed var(--accent-primary)',
+                                        backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                                    }}>
+                                        <div>
+                                            <div style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{p.name} <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.7 }}>DRAFT</span></div>
+                                            <div className="text-xs text-muted">{p.startDate} - {p.endDate} • {p.scale}</div>
+                                        </div>
+                                        <button onClick={() => removeDraft(p.id)} className="btn-ghost" style={{ padding: '4px' }}>
+                                            <Trash2 size={14} color="var(--text-muted)" />
+                                        </button>
                                     </div>
                                 ))}
+                                {draftProjects.length === 0 && (
+                                    <p className="text-sm text-muted" style={{ fontStyle: 'italic', padding: '1rem', textAlign: 'center' }}>
+                                        No draft projects. Add one to start simulating.
+                                    </p>
+                                )}
+                                {/* Display Active Projects (Ghosted) */}
+                                <div style={{ borderTop: '1px solid var(--bg-tertiary)', marginTop: '1rem', paddingTop: '1rem' }}>
+                                    <h4 className="text-sm font-medium text-muted">Active Projects</h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '0.5rem', opacity: 0.6 }}>
+                                        {currentSandboxProjects.filter(p => !p.isDraft).map(p => (
+                                            <div key={p.id} className="text-xs" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', textDecoration: p.status === 'Paused' ? 'line-through' : 'none', color: p.status === 'Paused' ? 'var(--text-muted)' : 'inherit' }}>
+                                                <span>{p.name}</span>
+                                                {p.status === 'Paused' && <span>PAUSED</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Main Area: Chart & AI */}

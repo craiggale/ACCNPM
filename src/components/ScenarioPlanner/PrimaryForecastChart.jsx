@@ -123,21 +123,118 @@ const PrimaryForecastChart = ({
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-tertiary)" vertical={false} />
-                                <XAxis dataKey="name" stroke="var(--text-secondary)" />
-                                <YAxis stroke="var(--text-secondary)" />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
-                                    itemStyle={{ color: 'var(--text-primary)' }}
+                                <defs>
+                                    <linearGradient id="demandGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#A100FF" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#A100FF" stopOpacity={0.6} />
+                                    </linearGradient>
+                                    <linearGradient id="demandOverloadGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke="rgba(161, 0, 255, 0.1)"
+                                    vertical={false}
                                 />
-                                <Legend />
+                                <XAxis
+                                    dataKey="name"
+                                    stroke="var(--text-secondary)"
+                                    tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                                    axisLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
+                                    tickLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
+                                />
+                                <YAxis
+                                    stroke="var(--text-secondary)"
+                                    domain={[0, (dataMax) => {
+                                        const maxCap = data[0]?.projectedCapacity || 0;
+                                        return Math.max(dataMax, maxCap) * 1.1;
+                                    }]}
+                                    tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                                    axisLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
+                                    tickLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
+                                    tickFormatter={(value) => value.toLocaleString()}
+                                    label={{
+                                        value: 'Hours',
+                                        angle: -90,
+                                        position: 'insideLeft',
+                                        style: { textAnchor: 'middle', fill: 'var(--text-muted)' }
+                                    }}
+                                />
+                                <Tooltip
+                                    content={({ active, payload, label }) => {
+                                        if (active && payload && payload.length) {
+                                            return (
+                                                <div style={{
+                                                    background: 'rgba(0, 0, 0, 0.85)',
+                                                    backdropFilter: 'blur(12px)',
+                                                    WebkitBackdropFilter: 'blur(12px)',
+                                                    border: '1px solid rgba(161, 0, 255, 0.3)',
+                                                    borderRadius: '12px',
+                                                    padding: '12px 16px',
+                                                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(161, 0, 255, 0.15)',
+                                                }}>
+                                                    <p style={{
+                                                        color: '#A100FF',
+                                                        fontWeight: 600,
+                                                        marginBottom: '8px',
+                                                        fontSize: '0.9rem'
+                                                    }}>
+                                                        {label}
+                                                    </p>
+                                                    {payload.map((entry, index) => (
+                                                        <div
+                                                            key={index}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '8px',
+                                                                marginBottom: '4px'
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                width: 10,
+                                                                height: 10,
+                                                                borderRadius: '50%',
+                                                                backgroundColor: entry.color || entry.stroke || '#A100FF',
+                                                                boxShadow: `0 0 8px ${entry.color || entry.stroke || '#A100FF'}`
+                                                            }} />
+                                                            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
+                                                                {entry.name}:
+                                                            </span>
+                                                            <span style={{ color: '#fff', fontWeight: 500, fontSize: '0.85rem' }}>
+                                                                {Math.round(entry.value).toLocaleString()}h
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
+                                    cursor={{ fill: 'rgba(161, 0, 255, 0.08)' }}
+                                />
+                                <Legend
+                                    wrapperStyle={{ paddingTop: '20px' }}
+                                    formatter={(value) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>}
+                                />
 
                                 {/* DEMAND FOCUS VIEW */}
                                 {chartFocus === 'Demand' && (
                                     <>
-                                        <Bar dataKey="projectedDemand" name="Projected Demand" radius={[4, 4, 0, 0]}>
+                                        <Bar
+                                            dataKey="projectedDemand"
+                                            name="Projected Demand"
+                                            radius={[6, 6, 0, 0]}
+                                            animationDuration={800}
+                                            animationEasing="ease-out"
+                                        >
                                             {data.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.projectedDemand > entry.projectedCapacity ? 'var(--danger)' : '#8b5cf6'} />
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={entry.projectedDemand > entry.projectedCapacity ? 'url(#demandOverloadGradient)' : 'url(#demandGradient)'}
+                                                />
                                             ))}
                                         </Bar>
 
@@ -146,7 +243,15 @@ const PrimaryForecastChart = ({
                                             <Line type="stepAfter" dataKey="baseCapacity" name="Original Capacity" stroke="var(--text-muted)" strokeDasharray="3 3" dot={false} strokeOpacity={0.5} />
                                         )}
                                         {/* Capacity Line */}
-                                        <Line type="stepAfter" dataKey="projectedCapacity" name="Capacity" stroke="var(--success)" strokeWidth={2} dot={false} />
+                                        <Line
+                                            type="stepAfter"
+                                            dataKey="projectedCapacity"
+                                            name="Capacity"
+                                            stroke="#10B981"
+                                            strokeWidth={3}
+                                            dot={false}
+                                            animationDuration={1000}
+                                        />
                                     </>
                                 )}
 
@@ -154,8 +259,8 @@ const PrimaryForecastChart = ({
                                 {chartFocus === 'Capacity' && (
                                     <>
                                         <Bar dataKey="baseCapacity" name="Original Capacity" fill="var(--text-muted)" opacity={0.3} radius={[4, 4, 0, 0]} />
-                                        <Bar dataKey="projectedCapacity" name="New Capacity" fill="var(--success)" radius={[4, 4, 0, 0]} />
-                                        <Line type="monotone" dataKey="projectedDemand" name="Demand" stroke="var(--accent-primary)" strokeDasharray="5 5" strokeWidth={2} dot={{ fill: 'var(--accent-primary)' }} />
+                                        <Bar dataKey="projectedCapacity" name="New Capacity" fill="#10B981" radius={[4, 4, 0, 0]} />
+                                        <Line type="monotone" dataKey="projectedDemand" name="Demand" stroke="#A100FF" strokeDasharray="5 5" strokeWidth={2} dot={{ fill: '#A100FF' }} />
                                     </>
                                 )}
                             </ComposedChart>

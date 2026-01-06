@@ -572,7 +572,19 @@ const OperationalView = () => {
                                     itemStyle={{ color: 'var(--text-primary)' }}
                                 />
                                 <Legend />
-                                <ReferenceLine y={maxCapacity} label="Max Capacity" stroke="var(--danger)" strokeDasharray="3 3" />
+                                <ReferenceLine
+                                    y={maxCapacity}
+                                    stroke="#ef4444"
+                                    strokeWidth={2}
+                                    strokeDasharray="8 4"
+                                    label={{
+                                        value: `Max Capacity: ${maxCapacity.toLocaleString()}h`,
+                                        position: 'right',
+                                        fill: '#ef4444',
+                                        fontSize: 12,
+                                        fontWeight: 600
+                                    }}
+                                />
 
                                 {activeProjectIds.map((pid, index) => {
                                     const project = projects.find(p => p.id === pid);

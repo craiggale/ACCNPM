@@ -56,6 +56,99 @@ const buttonVariants = {
     tap: { scale: 0.98 },
 };
 
+// Floating label input component
+const FloatingInput = ({
+    type,
+    value,
+    onChange,
+    label,
+    name: fieldName,
+    focusedField,
+    setFocusedField,
+    required = true,
+    minLength,
+    itemVariants
+}) => {
+    const isFocused = focusedField === fieldName;
+    const hasValue = value && value.length > 0;
+    const isActive = isFocused || hasValue;
+
+    return (
+        <motion.div
+            variants={itemVariants}
+            style={{
+                position: 'relative',
+                marginBottom: '1.5rem',
+            }}
+        >
+            <motion.label
+                animate={{
+                    y: isActive ? -28 : 0,
+                    x: isActive ? 0 : 0,
+                    scale: isActive ? 0.8 : 1,
+                    color: isFocused ? '#A100FF' : 'rgba(255, 255, 255, 0.4)',
+                }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                style={{
+                    position: 'absolute',
+                    left: '1rem',
+                    top: '1rem',
+                    fontSize: '0.95rem',
+                    pointerEvents: 'none',
+                    transformOrigin: 'left center',
+                    zIndex: 2,
+                    display: 'block',
+                }}
+            >
+                {label}
+            </motion.label>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+                <motion.input
+                    type={type}
+                    value={value}
+                    onChange={onChange}
+                    onFocus={() => setFocusedField(fieldName)}
+                    onBlur={() => setFocusedField(null)}
+                    required={required}
+                    minLength={minLength}
+                    style={{
+                        width: '100%',
+                        padding: '1rem',
+                        paddingTop: '1.25rem',
+                        background: 'rgba(0, 0, 0, 0.6)',
+                        border: `2px solid ${isFocused ? '#A100FF' : 'rgba(161, 0, 255, 0.2)'}`,
+                        borderRadius: '12px',
+                        color: '#fff',
+                        fontSize: '1rem',
+                        outline: 'none',
+                        transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+                        boxShadow: isFocused
+                            ? '0 0 20px rgba(161, 0, 255, 0.2), inset 0 0 10px rgba(161, 0, 255, 0.05)'
+                            : 'none',
+                    }}
+                />
+                {/* Animated border glow */}
+                <motion.div
+                    animate={{
+                        opacity: isFocused ? 1 : 0,
+                        scale: isFocused ? 1.01 : 1,
+                    }}
+                    style={{
+                        position: 'absolute',
+                        inset: -2,
+                        borderRadius: '14px',
+                        background: 'linear-gradient(135deg, rgba(161, 0, 255, 0.5), rgba(161, 0, 255, 0.2))',
+                        zIndex: -1,
+                        filter: 'blur(3px)',
+                        pointerEvents: 'none',
+                    }}
+                />
+            </div>
+        </motion.div>
+    );
+};
+
+
 function Login() {
     const navigate = useNavigate();
     const { login, register } = useAuth();
@@ -98,91 +191,7 @@ function Login() {
         }
     };
 
-    // Floating label input component
-    const FloatingInput = ({
-        type,
-        value,
-        onChange,
-        label,
-        name: fieldName,
-        required = true,
-        minLength
-    }) => {
-        const isFocused = focusedField === fieldName;
-        const hasValue = value.length > 0;
-        const isActive = isFocused || hasValue;
 
-        return (
-            <motion.div
-                variants={itemVariants}
-                style={{
-                    position: 'relative',
-                    marginBottom: '1.5rem',
-                }}
-            >
-                <motion.label
-                    animate={{
-                        y: isActive ? -24 : 0,
-                        x: isActive ? -4 : 0,
-                        scale: isActive ? 0.85 : 1,
-                        color: isFocused ? '#A100FF' : 'rgba(255, 255, 255, 0.5)',
-                    }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
-                    style={{
-                        position: 'absolute',
-                        left: '1rem',
-                        top: '1rem',
-                        fontSize: '0.9rem',
-                        pointerEvents: 'none',
-                        transformOrigin: 'left center',
-                        zIndex: 1,
-                    }}
-                >
-                    {label}
-                </motion.label>
-                <motion.input
-                    type={type}
-                    value={value}
-                    onChange={onChange}
-                    onFocus={() => setFocusedField(fieldName)}
-                    onBlur={() => setFocusedField(null)}
-                    required={required}
-                    minLength={minLength}
-                    whileFocus={{ scale: 1.01 }}
-                    style={{
-                        width: '100%',
-                        padding: '1rem',
-                        paddingTop: '1.25rem',
-                        background: 'rgba(0, 0, 0, 0.6)',
-                        border: `2px solid ${isFocused ? '#A100FF' : 'rgba(161, 0, 255, 0.2)'}`,
-                        borderRadius: '12px',
-                        color: '#fff',
-                        fontSize: '1rem',
-                        outline: 'none',
-                        transition: 'all 0.3s ease',
-                        boxShadow: isFocused
-                            ? '0 0 20px rgba(161, 0, 255, 0.3), inset 0 0 20px rgba(161, 0, 255, 0.05)'
-                            : 'none',
-                    }}
-                />
-                {/* Animated border glow */}
-                <motion.div
-                    animate={{
-                        opacity: isFocused ? 1 : 0,
-                        scale: isFocused ? 1 : 0.95,
-                    }}
-                    style={{
-                        position: 'absolute',
-                        inset: -2,
-                        borderRadius: '14px',
-                        background: 'linear-gradient(135deg, rgba(161, 0, 255, 0.4), rgba(161, 0, 255, 0.1))',
-                        zIndex: -1,
-                        filter: 'blur(4px)',
-                    }}
-                />
-            </motion.div>
-        );
-    };
 
     return (
         <div style={{
@@ -346,6 +355,9 @@ function Login() {
                                                 onChange={(e) => setName(e.target.value)}
                                                 label="Your Name"
                                                 name="name"
+                                                focusedField={focusedField}
+                                                setFocusedField={setFocusedField}
+                                                itemVariants={itemVariants}
                                             />
                                             <FloatingInput
                                                 type="text"
@@ -353,6 +365,9 @@ function Login() {
                                                 onChange={(e) => setOrgName(e.target.value)}
                                                 label="Organization Name"
                                                 name="orgName"
+                                                focusedField={focusedField}
+                                                setFocusedField={setFocusedField}
+                                                itemVariants={itemVariants}
                                             />
                                             <FloatingInput
                                                 type="text"
@@ -360,6 +375,9 @@ function Login() {
                                                 onChange={(e) => setOrgSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                                                 label="Organization Slug"
                                                 name="orgSlug"
+                                                focusedField={focusedField}
+                                                setFocusedField={setFocusedField}
+                                                itemVariants={itemVariants}
                                             />
                                         </motion.div>
                                     )}
@@ -371,6 +389,9 @@ function Login() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     label="Email Address"
                                     name="email"
+                                    focusedField={focusedField}
+                                    setFocusedField={setFocusedField}
+                                    itemVariants={itemVariants}
                                 />
                                 <FloatingInput
                                     type="password"
@@ -378,6 +399,9 @@ function Login() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     label="Password"
                                     name="password"
+                                    focusedField={focusedField}
+                                    setFocusedField={setFocusedField}
+                                    itemVariants={itemVariants}
                                     minLength={6}
                                 />
 

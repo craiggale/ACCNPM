@@ -365,13 +365,90 @@ const OperationalView = () => {
     }, [projects, selectedProjectIds, resources, selectedTeam, selectedRole, timeView]);
 
     const { data: chartData, maxCapacity, activeProjectIds } = chartDataResult;
-    const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6'];
+
+    // Premium chart colors matching the accent theme
+    const CHART_COLORS = [
+        '#A100FF', // Primary accent
+        '#00D9FF', // Cyan
+        '#10B981', // Emerald
+        '#F59E0B', // Amber
+        '#EC4899', // Pink
+        '#6366F1', // Indigo
+        '#14B8A6', // Teal
+        '#8B5CF6'  // Violet
+    ];
 
     // Style for dropdown options with issues
     const getOptionStyle = (hasIssue) => ({
         backgroundColor: hasIssue ? 'rgba(239, 68, 68, 0.1)' : undefined,
         color: hasIssue ? '#ef4444' : undefined,
     });
+
+    // Custom glassmorphism tooltip
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div style={{
+                    background: 'rgba(0, 0, 0, 0.85)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(161, 0, 255, 0.3)',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(161, 0, 255, 0.15)',
+                }}>
+                    <p style={{
+                        color: '#A100FF',
+                        fontWeight: 600,
+                        marginBottom: '8px',
+                        fontSize: '0.9rem',
+                        letterSpacing: '0.02em'
+                    }}>
+                        {label}
+                    </p>
+                    {payload.map((entry, index) => (
+                        <div
+                            key={index}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginBottom: '4px'
+                            }}
+                        >
+                            <div style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: '50%',
+                                backgroundColor: entry.color,
+                                boxShadow: `0 0 8px ${entry.color}`
+                            }} />
+                            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
+                                {entry.name}:
+                            </span>
+                            <span style={{ color: '#fff', fontWeight: 500, fontSize: '0.85rem' }}>
+                                {Math.round(entry.value).toLocaleString()}h
+                            </span>
+                        </div>
+                    ))}
+                    <div style={{
+                        marginTop: '8px',
+                        paddingTop: '8px',
+                        borderTop: '1px solid rgba(255,255,255,0.1)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>Total:</span>
+                        <span style={{ color: '#fff', fontWeight: 600 }}>
+                            {payload.reduce((sum, entry) => sum + entry.value, 0).toLocaleString()}h
+                        </span>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -633,13 +710,37 @@ const OperationalView = () => {
 
                     <div style={{ height: '400px', width: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-tertiary)" vertical={false} />
-                                <XAxis dataKey="name" stroke="var(--text-secondary)" />
+                            <BarChart
+                                data={chartData}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                                <defs>
+                                    {CHART_COLORS.map((color, index) => (
+                                        <linearGradient key={index} id={`gradient-${index}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor={color} stopOpacity={1} />
+                                            <stop offset="100%" stopColor={color} stopOpacity={0.6} />
+                                        </linearGradient>
+                                    ))}
+                                </defs>
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke="rgba(161, 0, 255, 0.1)"
+                                    vertical={false}
+                                />
+                                <XAxis
+                                    dataKey="name"
+                                    stroke="var(--text-secondary)"
+                                    tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                                    axisLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
+                                    tickLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
+                                />
                                 <YAxis
                                     stroke="var(--text-secondary)"
                                     domain={[0, (dataMax) => Math.max(dataMax, maxCapacity) * 1.1]}
                                     tickFormatter={(value) => value.toLocaleString()}
+                                    tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                                    axisLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
+                                    tickLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
                                     label={{
                                         value: 'Hours',
                                         angle: -90,
@@ -647,11 +748,11 @@ const OperationalView = () => {
                                         style: { textAnchor: 'middle', fill: 'var(--text-muted)' }
                                     }}
                                 />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
-                                    itemStyle={{ color: 'var(--text-primary)' }}
+                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(161, 0, 255, 0.08)' }} />
+                                <Legend
+                                    wrapperStyle={{ paddingTop: '20px' }}
+                                    formatter={(value) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>}
                                 />
-                                <Legend />
                                 <ReferenceLine
                                     y={maxCapacity}
                                     stroke="#ef4444"
@@ -668,14 +769,17 @@ const OperationalView = () => {
 
                                 {activeProjectIds.map((pid, index) => {
                                     const project = projects.find(p => p.id === pid);
+                                    const isTopBar = index === activeProjectIds.length - 1;
                                     return (
                                         <Bar
                                             key={pid}
                                             dataKey={pid}
                                             name={project ? project.name : 'Unknown'}
                                             stackId="demand"
-                                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                                            radius={[index === activeProjectIds.length - 1 ? 4 : 0, index === activeProjectIds.length - 1 ? 4 : 0, 0, 0]}
+                                            fill={`url(#gradient-${index % CHART_COLORS.length})`}
+                                            radius={isTopBar ? [6, 6, 0, 0] : [0, 0, 0, 0]}
+                                            animationDuration={800}
+                                            animationEasing="ease-out"
                                         />
                                     );
                                 })}

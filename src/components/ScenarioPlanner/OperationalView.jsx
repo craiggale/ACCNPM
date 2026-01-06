@@ -1,9 +1,10 @@
 import { useApp } from '../../context/AppContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { CheckCircle, Circle, Trash2, Plus, X } from 'lucide-react';
+import { CheckCircle, Circle, Trash2, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { addMonths, startOfMonth, endOfMonth, format, startOfWeek, endOfWeek, addWeeks, startOfQuarter, endOfQuarter, addQuarters } from 'date-fns';
 import NewProjectPane from '../NewProjectPane';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Constants for Role Distribution Heuristics ---
 const ROLE_DISTRIBUTION = {
@@ -31,6 +32,7 @@ const OperationalView = () => {
     const [selectedRole, setSelectedRole] = useState('All');
     const [timeView, setTimeView] = useState('Month'); // 'Week', 'Month', 'Quarter'
     const [showDetailOverlay, setShowDetailOverlay] = useState(false);
+    const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
 
     // Available filter options
     const TEAMS = ['All', 'Website', 'Configurator', 'Asset Production'];
@@ -307,74 +309,124 @@ const OperationalView = () => {
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: 'var(--spacing-lg)' }}>
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: isPanelCollapsed ? '56px 1fr' : '350px 1fr',
+                gap: 'var(--spacing-lg)',
+                transition: 'grid-template-columns 0.3s ease'
+            }}>
 
                 {/* Project Selection Panel */}
-                <div className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
-                        <h3 className="text-xl">Upcoming Projects</h3>
-                        <button
-                            className="btn btn-primary"
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                            onClick={() => setIsAdding(true)}
-                        >
-                            <Plus size={16} style={{ marginRight: '4px' }} /> New
-                        </button>
-                    </div>
-
-                    {isAdding && (
-                        <NewProjectPane onClose={() => setIsAdding(false)} />
-                    )}
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                        {projects.map(project => {
-                            const isSelected = selectedProjectIds.includes(project.id);
-                            return (
-                                <div
-                                    key={project.id}
-                                    style={{
-                                        padding: 'var(--spacing-md)',
-                                        borderRadius: 'var(--radius-md)',
-                                        border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--bg-tertiary)'}`,
-                                        backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 'var(--spacing-md)',
-                                        transition: 'all var(--transition-fast)',
-                                        position: 'relative'
-                                    }}
-                                >
-                                    <div
-                                        onClick={() => toggleProjectSelection(project.id)}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', flex: 1, cursor: 'pointer' }}
-                                    >
-                                        {isSelected ?
-                                            <CheckCircle size={20} color="var(--accent-primary)" /> :
-                                            <Circle size={20} color="var(--text-muted)" />
-                                        }
-                                        <div>
-                                            <div style={{ fontWeight: 500 }}>{project.name}</div>
-                                            <div className="text-sm text-muted">
-                                                {project.startDate} - {project.endDate}
-                                                <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', padding: '1px 4px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)' }}>
-                                                    {project.scale || 'Medium'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
+                <div className="card" style={{
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease'
+                }}>
+                    {isPanelCollapsed ? (
+                        /* Collapsed State */
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            padding: 'var(--spacing-sm) 0',
+                            gap: 'var(--spacing-md)'
+                        }}>
+                            <button
+                                onClick={() => setIsPanelCollapsed(false)}
+                                className="btn-ghost"
+                                style={{ padding: '0.5rem' }}
+                                title="Expand Projects"
+                            >
+                                <ChevronRight size={20} />
+                            </button>
+                            <span style={{
+                                writingMode: 'vertical-lr',
+                                textOrientation: 'mixed',
+                                fontSize: '0.75rem',
+                                color: 'var(--text-muted)',
+                                letterSpacing: '0.05em'
+                            }}>
+                                {selectedProjectIds.length} Selected
+                            </span>
+                        </div>
+                    ) : (
+                        /* Expanded State */
+                        <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
+                                <h3 className="text-xl">Upcoming Projects</h3>
+                                <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
-                                        className="btn-ghost"
-                                        style={{ padding: '0.25rem', color: 'var(--text-muted)' }}
-                                        title="Delete Project"
+                                        className="btn btn-primary"
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                                        onClick={() => setIsAdding(true)}
                                     >
-                                        <Trash2 size={16} />
+                                        <Plus size={16} style={{ marginRight: '4px' }} /> New
+                                    </button>
+                                    <button
+                                        onClick={() => setIsPanelCollapsed(true)}
+                                        className="btn-ghost"
+                                        style={{ padding: '0.25rem 0.5rem' }}
+                                        title="Collapse Panel"
+                                    >
+                                        <ChevronLeft size={16} />
                                     </button>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            </div>
+
+                            {isAdding && (
+                                <NewProjectPane onClose={() => setIsAdding(false)} />
+                            )}
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                                {projects.map(project => {
+                                    const isSelected = selectedProjectIds.includes(project.id);
+                                    return (
+                                        <div
+                                            key={project.id}
+                                            style={{
+                                                padding: 'var(--spacing-md)',
+                                                borderRadius: 'var(--radius-md)',
+                                                border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--bg-tertiary)'}`,
+                                                backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 'var(--spacing-md)',
+                                                transition: 'all var(--transition-fast)',
+                                                position: 'relative'
+                                            }}
+                                        >
+                                            <div
+                                                onClick={() => toggleProjectSelection(project.id)}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', flex: 1, cursor: 'pointer' }}
+                                            >
+                                                {isSelected ?
+                                                    <CheckCircle size={20} color="var(--accent-primary)" /> :
+                                                    <Circle size={20} color="var(--text-muted)" />
+                                                }
+                                                <div>
+                                                    <div style={{ fontWeight: 500 }}>{project.name}</div>
+                                                    <div className="text-sm text-muted">
+                                                        {project.startDate} - {project.endDate}
+                                                        <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', padding: '1px 4px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)' }}>
+                                                            {project.scale || 'Medium'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }}
+                                                className="btn-ghost"
+                                                style={{ padding: '0.25rem', color: 'var(--text-muted)' }}
+                                                title="Delete Project"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Chart Section */}

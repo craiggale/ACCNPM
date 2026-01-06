@@ -78,14 +78,14 @@ const FloatingInput = ({
             variants={itemVariants}
             style={{
                 position: 'relative',
-                marginBottom: '1.5rem',
+                marginBottom: '1.75rem',
             }}
         >
             <motion.label
                 animate={{
-                    y: isActive ? -28 : 0,
+                    y: isActive ? -32 : 0,
                     x: isActive ? 0 : 0,
-                    scale: isActive ? 0.8 : 1,
+                    scale: isActive ? 0.75 : 1,
                     color: isFocused ? '#A100FF' : 'rgba(255, 255, 255, 0.4)',
                 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}

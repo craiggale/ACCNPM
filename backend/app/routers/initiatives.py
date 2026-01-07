@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import DbSession, CurrentOrgId
+from app.dependencies import DbSession, CurrentSessionOrgId
 from app.models import Initiative, InitiativeValueMetric, InitiativeTaskLink, InitiativeTaskValue, Task
 from app.schemas.initiative import InitiativeCreate, InitiativeRead, InitiativeUpdate, TaskLinkCreate
 from app.websocket import manager, EventType
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/initiatives", tags=["Initiatives"])
 
 
 @router.get("", response_model=list[InitiativeRead])
-async def list_initiatives(db: DbSession, org_id: CurrentOrgId):
+async def list_initiatives(db: DbSession, org_id: CurrentSessionOrgId):
     """List all initiatives for the current organization."""
     result = await db.execute(
         select(Initiative)
@@ -49,7 +49,7 @@ async def list_initiatives(db: DbSession, org_id: CurrentOrgId):
 
 
 @router.post("", response_model=InitiativeRead, status_code=status.HTTP_201_CREATED)
-async def create_initiative(init_data: InitiativeCreate, db: DbSession, org_id: CurrentOrgId):
+async def create_initiative(init_data: InitiativeCreate, db: DbSession, org_id: CurrentSessionOrgId):
     """Create a new initiative."""
     initiative = Initiative(
         org_id=org_id,
@@ -95,7 +95,7 @@ async def create_initiative(init_data: InitiativeCreate, db: DbSession, org_id: 
 
 
 @router.get("/{initiative_id}", response_model=InitiativeRead)
-async def get_initiative(initiative_id: uuid.UUID, db: DbSession, org_id: CurrentOrgId):
+async def get_initiative(initiative_id: uuid.UUID, db: DbSession, org_id: CurrentSessionOrgId):
     """Get a specific initiative."""
     result = await db.execute(
         select(Initiative)
@@ -130,7 +130,7 @@ async def update_initiative(
     initiative_id: uuid.UUID,
     updates: InitiativeUpdate,
     db: DbSession,
-    org_id: CurrentOrgId
+    org_id: CurrentSessionOrgId
 ):
     """Update an initiative."""
     result = await db.execute(
@@ -180,7 +180,7 @@ async def update_initiative(
 
 
 @router.delete("/{initiative_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_initiative(initiative_id: uuid.UUID, db: DbSession, org_id: CurrentOrgId):
+async def delete_initiative(initiative_id: uuid.UUID, db: DbSession, org_id: CurrentSessionOrgId):
     """Delete an initiative."""
     result = await db.execute(
         select(Initiative).where(Initiative.id == initiative_id, Initiative.org_id == org_id)
@@ -204,7 +204,7 @@ async def link_task_to_initiative(
     initiative_id: uuid.UUID,
     link_data: TaskLinkCreate,
     db: DbSession,
-    org_id: CurrentOrgId
+    org_id: CurrentSessionOrgId
 ):
     """Link a task to an initiative with value metrics."""
     # Get initiative
@@ -278,7 +278,7 @@ async def unlink_task_from_initiative(
     initiative_id: uuid.UUID,
     task_id: uuid.UUID,
     db: DbSession,
-    org_id: CurrentOrgId
+    org_id: CurrentSessionOrgId
 ):
     """Unlink a task from an initiative."""
     # Find and delete the link

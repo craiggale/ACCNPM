@@ -97,9 +97,25 @@ export const authApi = {
     getMe: () =>
         apiClient.get('/auth/me'),
 
+    // Two-phase login: select organization to complete login
+    selectOrganization: (authToken, orgId) =>
+        apiClient.post('/auth/select-organization', { auth_token: authToken, org_id: orgId }),
+
+    // Get user's assigned organizations for switching
+    getMyOrganizations: () =>
+        apiClient.get('/auth/my-organizations'),
+
+    // Switch organization mid-session (requires backend support)
+    switchOrganization: (orgId) =>
+        apiClient.post('/auth/select-organization', {
+            auth_token: localStorage.getItem('pending_auth_token'),
+            org_id: orgId
+        }),
+
     createUser: (userData) =>
         apiClient.post('/auth/users', userData),
 };
+
 
 // Projects API
 export const projectsApi = {
@@ -150,6 +166,10 @@ export const resourcesApi = {
     list: () =>
         apiClient.get('/resources'),
 
+    // Get tiered resources (primary vs shared) for task assignment
+    getAvailable: () =>
+        apiClient.get('/resources/available'),
+
     get: (id) =>
         apiClient.get(`/resources/${id}`),
 
@@ -162,6 +182,7 @@ export const resourcesApi = {
     delete: (id) =>
         apiClient.delete(`/resources/${id}`),
 };
+
 
 // Initiatives API
 export const initiativesApi = {

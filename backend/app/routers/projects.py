@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import DbSession, CurrentOrgId, CurrentUser
+from app.dependencies import DbSession, CurrentSessionOrgId, CurrentUser
 from app.models import Project, LaunchDetail, InputGateway, GatewayVersion, Task, TaskMarketStatus
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate, InputGatewayUpdate
 from app.websocket import manager, EventType
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
 @router.get("", response_model=list[ProjectRead])
-async def list_projects(db: DbSession, org_id: CurrentOrgId):
+async def list_projects(db: DbSession, org_id: CurrentSessionOrgId):
     """List all projects for the current organization."""
     result = await db.execute(
         select(Project)
@@ -35,7 +35,7 @@ async def list_projects(db: DbSession, org_id: CurrentOrgId):
 async def create_project(
     project_data: ProjectCreate, 
     db: DbSession, 
-    org_id: CurrentOrgId
+    org_id: CurrentSessionOrgId
 ):
     """Create a new project with launch details."""
     # Create project
@@ -94,7 +94,7 @@ async def create_project(
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
-async def get_project(project_id: uuid.UUID, db: DbSession, org_id: CurrentOrgId):
+async def get_project(project_id: uuid.UUID, db: DbSession, org_id: CurrentSessionOrgId):
     """Get a specific project."""
     result = await db.execute(
         select(Project)
@@ -118,7 +118,7 @@ async def update_project(
     project_id: uuid.UUID,
     updates: ProjectUpdate,
     db: DbSession,
-    org_id: CurrentOrgId
+    org_id: CurrentSessionOrgId
 ):
     """Update a project."""
     result = await db.execute(
@@ -156,7 +156,7 @@ async def update_project(
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_project(project_id: uuid.UUID, db: DbSession, org_id: CurrentOrgId):
+async def delete_project(project_id: uuid.UUID, db: DbSession, org_id: CurrentSessionOrgId):
     """Delete a project."""
     result = await db.execute(
         select(Project).where(Project.id == project_id, Project.org_id == org_id)
@@ -181,7 +181,7 @@ async def update_gateway(
     gateway_id: uuid.UUID,
     update_data: InputGatewayUpdate,
     db: DbSession,
-    org_id: CurrentOrgId
+    org_id: CurrentSessionOrgId
 ):
     """Update an input gateway status (triggers rework logic if needed)."""
     # Get project and gateway

@@ -19,9 +19,10 @@ class Organization(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     
     # Relationships
-    users: Mapped[list["User"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
+    user_assignments: Mapped[list["UserAssignment"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     projects: Mapped[list["Project"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     resources: Mapped[list["Resource"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     initiatives: Mapped[list["Initiative"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     teams: Mapped[list["Team"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     markets: Mapped[list["Market"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
+

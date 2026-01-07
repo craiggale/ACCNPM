@@ -2,6 +2,7 @@
 
 from app.models.organization import Organization
 from app.models.user import User
+from app.models.user_assignment import UserAssignment
 from app.models.project import Project, LaunchDetail, InputGateway, GatewayVersion
 from app.models.task import Task, TaskMarketStatus
 from app.models.resource import Resource
@@ -11,6 +12,7 @@ from app.models.template import TaskTemplate, GatewayTemplate, Team, Market
 __all__ = [
     "Organization",
     "User",
+    "UserAssignment",
     "Project",
     "LaunchDetail",
     "InputGateway",
@@ -27,3 +29,4 @@ __all__ = [
     "Team",
     "Market",
 ]
+

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import DbSession, CurrentOrgId
+from app.dependencies import DbSession, CurrentSessionOrgId
 from app.models import Task, TaskMarketStatus, Resource, Project
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate, AutoAssignResult
 from app.websocket import manager, EventType
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 @router.get("", response_model=list[TaskRead])
 async def list_tasks(
     db: DbSession, 
-    org_id: CurrentOrgId,
+    org_id: CurrentSessionOrgId,
     project_id: uuid.UUID | None = None
 ):
     """List tasks, optionally filtered by project."""
@@ -33,7 +33,7 @@ async def list_tasks(
 
 
 @router.post("", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
-async def create_task(task_data: TaskCreate, db: DbSession, org_id: CurrentOrgId):
+async def create_task(task_data: TaskCreate, db: DbSession, org_id: CurrentSessionOrgId):
     """Create a new task."""
     # Verify project belongs to org
     result = await db.execute(
@@ -85,7 +85,7 @@ async def create_task(task_data: TaskCreate, db: DbSession, org_id: CurrentOrgId
 
 
 @router.get("/{task_id}", response_model=TaskRead)
-async def get_task(task_id: uuid.UUID, db: DbSession, org_id: CurrentOrgId):
+async def get_task(task_id: uuid.UUID, db: DbSession, org_id: CurrentSessionOrgId):
     """Get a specific task."""
     result = await db.execute(
         select(Task)
@@ -105,7 +105,7 @@ async def update_task(
     task_id: uuid.UUID,
     updates: TaskUpdate,
     db: DbSession,
-    org_id: CurrentOrgId
+    org_id: CurrentSessionOrgId
 ):
     """Update a task."""
     result = await db.execute(
@@ -138,7 +138,7 @@ async def update_task(
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_task(task_id: uuid.UUID, db: DbSession, org_id: CurrentOrgId):
+async def delete_task(task_id: uuid.UUID, db: DbSession, org_id: CurrentSessionOrgId):
     """Delete a task."""
     result = await db.execute(
         select(Task).where(Task.id == task_id, Task.org_id == org_id)
@@ -158,7 +158,7 @@ async def delete_task(task_id: uuid.UUID, db: DbSession, org_id: CurrentOrgId):
 
 
 @router.post("/auto-assign", response_model=AutoAssignResult)
-async def auto_assign_tasks(db: DbSession, org_id: CurrentOrgId):
+async def auto_assign_tasks(db: DbSession, org_id: CurrentSessionOrgId):
     """Auto-assign tasks to resources based on team and capacity."""
     # Get all unassigned tasks
     tasks_result = await db.execute(

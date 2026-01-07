@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { differenceInDays, differenceInMonths } from 'date-fns';
-import { CheckCircle2, Clock, AlertCircle, MoreHorizontal, LayoutList, BarChart2, ArrowLeft, Calendar, CheckSquare, Plus, Trash2, Edit2, Save, X, Globe, RefreshCcw, DoorOpen, Search, Filter, MoreVertical, AlertTriangle, FileText, Archive, Rocket } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, MoreHorizontal, LayoutList, BarChart2, ArrowLeft, Calendar, CheckSquare, Plus, Trash2, Edit2, Save, X, Globe, RefreshCcw, DoorOpen, Search, Filter, MoreVertical, AlertTriangle, FileText, Archive, Rocket, LayoutGrid, List } from 'lucide-react';
 import GanttChart from '../components/GanttChart';
 import NewProjectPane from '../components/NewProjectPane';
 import ProjectSummaryDashboard from '../components/ProjectSummaryDashboard';
@@ -11,6 +11,7 @@ import TaskDetailPanel from '../components/TaskDetailPanel';
 const ProjectDashboard = () => {
     const { projects, tasks, resources, initiatives, addTask, updateTask, deleteTask, teams, linkTaskToInitiative } = useApp();
     const [viewMode, setViewMode] = useState('list'); // 'list', 'gantt', 'detail'
+    const [projectDisplayMode, setProjectDisplayMode] = useState('card'); // 'card', 'table'
     const [isAddingProject, setIsAddingProject] = useState(false);
     const [activeProject, setActiveProject] = useState(null);
     const [selectedProjectIds, setSelectedProjectIds] = useState([]);
@@ -304,6 +305,137 @@ const ProjectDashboard = () => {
                         </div>
                     );
                 })}
+            </div>
+        );
+    };
+
+    const renderProjectTable = () => {
+        const filteredProjects = projects.filter(p =>
+            (selectedTeam === 'All' || p.type === selectedTeam) &&
+            (healthFilter === 'All' || p.health === healthFilter)
+        );
+
+        return (
+            <div className="card" style={{ overflow: 'hidden' }}>
+                {/* Table Header */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 0.8fr 1fr 1fr 1.5fr 1fr 100px',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: 'var(--bg-tertiary)',
+                    color: 'var(--text-muted)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid var(--bg-tertiary)'
+                }}>
+                    <div>Project Name</div>
+                    <div>Status</div>
+                    <div>Team</div>
+                    <div>PM</div>
+                    <div>Dates</div>
+                    <div>Progress</div>
+                    <div>Actions</div>
+                </div>
+
+                {/* Table Rows */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {filteredProjects.map(project => {
+                        const pTasks = projectTasks[project.id] || [];
+                        const start = new Date(project.startDate);
+                        const end = new Date(project.endDate);
+                        const durationMonths = Math.max(1, differenceInMonths(end, start));
+
+                        let monthlyHours = 320;
+                        if (project.scale === 'Small') monthlyHours = 160;
+                        if (project.scale === 'Large') monthlyHours = 640;
+
+                        const totalExpectedHours = durationMonths * monthlyHours;
+                        const totalActualHours = pTasks.reduce((sum, t) => sum + (parseInt(t.actual) || 0), 0);
+                        const progress = totalExpectedHours > 0 ? Math.min(100, Math.round((totalActualHours / totalExpectedHours) * 100)) : 0;
+
+                        return (
+                            <div
+                                key={project.id}
+                                onClick={() => handleProjectClick(project)}
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '2fr 0.8fr 1fr 1fr 1.5fr 1fr 100px',
+                                    padding: '0.75rem 1rem',
+                                    alignItems: 'center',
+                                    borderBottom: '1px solid var(--bg-tertiary)',
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.15s ease'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(161, 0, 255, 0.04)'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                                <div style={{ fontWeight: 500 }}>{project.name}</div>
+                                <div>
+                                    <span style={{
+                                        fontSize: '0.75rem',
+                                        padding: '0.125rem 0.5rem',
+                                        borderRadius: '999px',
+                                        backgroundColor: project.status === 'Active' ? 'rgba(16, 185, 129, 0.15)' :
+                                            project.status === 'Planning' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                                        color: project.status === 'Active' ? 'var(--success)' :
+                                            project.status === 'Planning' ? 'var(--warning)' : 'var(--text-muted)'
+                                    }}>
+                                        {project.status}
+                                    </span>
+                                </div>
+                                <div className="text-sm text-muted">{project.type || 'N/A'}</div>
+                                <div className="text-sm">{project.pm || 'Unassigned'}</div>
+                                <div className="text-sm text-muted">
+                                    {project.startDate} → {project.endDate}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{
+                                        flex: 1,
+                                        height: '6px',
+                                        backgroundColor: 'var(--bg-tertiary)',
+                                        borderRadius: '999px',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{
+                                            height: '100%',
+                                            width: `${progress}%`,
+                                            backgroundColor: '#A100FF',
+                                            borderRadius: '999px',
+                                            transition: 'width 0.3s ease'
+                                        }} />
+                                    </div>
+                                    <span className="text-sm" style={{ minWidth: '40px', color: '#A100FF' }}>{progress}%</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                        onClick={(e) => { e.stopPropagation(); handleProjectClick(project); }}
+                                    >
+                                        View
+                                    </button>
+                                    <button
+                                        className="btn-ghost"
+                                        style={{ padding: '0.25rem' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveMenuProjectId(activeMenuProjectId === project.id ? null : project.id);
+                                        }}
+                                    >
+                                        <MoreVertical size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {filteredProjects.length === 0 && (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            No projects found matching the current filters.
+                        </div>
+                    )}
+                </div>
             </div>
         );
     };
@@ -938,16 +1070,28 @@ const ProjectDashboard = () => {
 
                         <div style={{ display: 'flex', backgroundColor: 'var(--bg-secondary)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--bg-tertiary)' }}>
                             <button
-                                onClick={() => setViewMode('list')}
+                                onClick={() => { setViewMode('list'); setProjectDisplayMode('card'); }}
                                 style={{
                                     padding: '0.5rem',
                                     borderRadius: 'var(--radius-sm)',
-                                    backgroundColor: viewMode === 'list' ? 'var(--bg-tertiary)' : 'transparent',
-                                    color: viewMode === 'list' ? 'var(--text-primary)' : 'var(--text-muted)'
+                                    backgroundColor: viewMode === 'list' && projectDisplayMode === 'card' ? 'var(--bg-tertiary)' : 'transparent',
+                                    color: viewMode === 'list' && projectDisplayMode === 'card' ? 'var(--text-primary)' : 'var(--text-muted)'
                                 }}
-                                title="List View"
+                                title="Card View"
                             >
-                                <LayoutList size={20} />
+                                <LayoutGrid size={20} />
+                            </button>
+                            <button
+                                onClick={() => { setViewMode('list'); setProjectDisplayMode('table'); }}
+                                style={{
+                                    padding: '0.5rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: viewMode === 'list' && projectDisplayMode === 'table' ? 'var(--bg-tertiary)' : 'transparent',
+                                    color: viewMode === 'list' && projectDisplayMode === 'table' ? 'var(--text-primary)' : 'var(--text-muted)'
+                                }}
+                                title="Table View"
+                            >
+                                <List size={20} />
                             </button>
                             <button
                                 onClick={() => setViewMode('gantt')}
@@ -987,7 +1131,7 @@ const ProjectDashboard = () => {
                             </span>
                         </div>
                     )}
-                    {renderProjectList()}
+                    {projectDisplayMode === 'card' ? renderProjectList() : renderProjectTable()}
                 </>
             )}
             {viewMode === 'gantt' && renderCombinedGantt()}

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { subWeeks, addWeeks, format, differenceInDays, addDays } from 'date-fns';
+import { useAuth } from './AuthContext';
 
 const AppContext = createContext();
 
@@ -86,6 +87,9 @@ const INITIAL_GATEWAY_TEMPLATES = {
 };
 
 export const AppProvider = ({ children }) => {
+  // Get auth context for hybrid tenancy
+  const authContext = useAuth();
+
   // Admin State
   const [teams, setTeams] = useState(['Website', 'Configurator', 'Asset Production']);
   const [markets, setMarkets] = useState(['US', 'UK', 'Germany', 'France', 'Italy', 'Spain', 'Japan', 'Australia', 'Brazil', 'Canada']);
@@ -880,6 +884,31 @@ export const AppProvider = ({ children }) => {
     let updatedTasks = tasks.map(t => ({ ...t, assignee: null }));
     let resourceUsage = resources.map(r => ({ ...r, used: 0 }));
     let gaps = [];
+    let crossPortfolioSuggestions = [];
+
+    // Get current org context for demo mode
+    const currentOrgId = authContext?.currentUser?.org_id;
+
+    // Categorize resources by primary vs shared for this portfolio
+    const primaryResources = resourceUsage.filter(r => {
+      // In demo mode: primary = belongs to current org
+      // Non-demo: would check is_primary flag from backend
+      return r.org_id === currentOrgId;
+    });
+
+    const sharedResources = resourceUsage.filter(r => {
+      // In demo mode: shared = belongs to another org but could be allocated
+      // Simulate: resources from other orgs with capacity available
+      return r.org_id !== currentOrgId;
+    });
+
+    // Build global resource pool with simulated allocation data
+    const globalPool = resourceUsage.map(r => ({
+      ...r,
+      isPrimary: r.org_id === currentOrgId,
+      allocation: r.org_id === currentOrgId ? 100 : 50, // Simulated: primary=100%, shared=50%
+      availableCapacity: parseInt(r.capacity) - (parseInt(r.leave) || 0) - r.used
+    }));
 
     updatedTasks.forEach(task => {
       const project = projects.find(p => p.id === task.projectId);
@@ -888,29 +917,112 @@ export const AppProvider = ({ children }) => {
       const requiredTeam = project.type;
       const estimate = parseInt(task.estimate) || 0;
 
-      // Find suitable resource: Match Team AND have Capacity
-      const bestResource = resourceUsage.find(r =>
+      // TIER 1: Try to assign from PRIMARY resources first
+      const bestPrimaryResource = primaryResources.find(r =>
         r.team === requiredTeam && (parseInt(r.capacity) - (parseInt(r.leave) || 0) - r.used) >= estimate
       );
 
-      if (bestResource) {
-        task.assignee = bestResource.id;
-        bestResource.used += estimate;
-      } else {
+      if (bestPrimaryResource) {
+        task.assignee = bestPrimaryResource.id;
+        bestPrimaryResource.used += estimate;
+        // Update global pool tracking
+        const poolResource = globalPool.find(g => g.id === bestPrimaryResource.id);
+        if (poolResource) poolResource.used += estimate;
+        return; // Successfully assigned to primary
+      }
+
+      // TIER 2: Try to assign from SHARED resources (if they have capacity for this portfolio)
+      const bestSharedResource = sharedResources.find(r =>
+        r.team === requiredTeam &&
+        (parseInt(r.capacity) - (parseInt(r.leave) || 0) - r.used) >= estimate
+      );
+
+      if (bestSharedResource) {
+        task.assignee = bestSharedResource.id;
+        bestSharedResource.used += estimate;
+        // Update global pool tracking
+        const poolResource = globalPool.find(g => g.id === bestSharedResource.id);
+        if (poolResource) poolResource.used += estimate;
+
+        // Note: this is a shared resource assignment
         gaps.push({
           taskId: task.id,
           taskTitle: task.title,
           projectName: project.name,
           requiredTeam: requiredTeam,
           estimate: estimate,
-          reason: resourceUsage.some(r => r.team === requiredTeam) ? 'Insufficient Capacity' : 'No Team Members'
+          assignedTo: bestSharedResource.name,
+          reason: 'Assigned to Shared Resource',
+          type: 'shared_assignment'
+        });
+        return;
+      }
+
+      // TIER 3: No suitable resources - check if cross-portfolio reallocation could help
+      // Look for resources in OTHER portfolios with matching skills and available capacity
+      const potentialCrossPortfolio = globalPool.filter(r =>
+        r.team === requiredTeam &&
+        !r.isPrimary &&
+        r.allocation < 100 && // Not fully allocated
+        (parseInt(r.capacity) - (parseInt(r.leave) || 0) - r.used) >= estimate
+      );
+
+      if (potentialCrossPortfolio.length > 0) {
+        // Suggest reallocation
+        crossPortfolioSuggestions.push({
+          taskId: task.id,
+          taskTitle: task.title,
+          projectName: project.name,
+          requiredTeam: requiredTeam,
+          estimate: estimate,
+          candidates: potentialCrossPortfolio.map(r => ({
+            id: r.id,
+            name: r.name,
+            currentAllocation: r.allocation,
+            availableHours: Math.round((parseInt(r.capacity) - (parseInt(r.leave) || 0)) * (100 - r.allocation) / 100),
+            portfolioName: getPortfolioName(r.org_id)
+          })),
+          type: 'reallocation_suggestion'
         });
       }
+
+      // Record the gap
+      gaps.push({
+        taskId: task.id,
+        taskTitle: task.title,
+        projectName: project.name,
+        requiredTeam: requiredTeam,
+        estimate: estimate,
+        reason: primaryResources.some(r => r.team === requiredTeam)
+          ? 'Primary Resources at Capacity'
+          : 'No Primary Team Members',
+        type: 'gap',
+        hasCrossPortfolioOption: potentialCrossPortfolio.length > 0
+      });
     });
 
     setTasks(updatedTasks);
-    return gaps;
+
+    // Return comprehensive result
+    return {
+      gaps: gaps.filter(g => g.type === 'gap'),
+      sharedAssignments: gaps.filter(g => g.type === 'shared_assignment'),
+      crossPortfolioSuggestions: crossPortfolioSuggestions,
+      summary: {
+        assigned: updatedTasks.filter(t => t.assignee).length,
+        unassigned: gaps.filter(g => g.type === 'gap').length,
+        usedSharedResources: gaps.filter(g => g.type === 'shared_assignment').length,
+        canReallocate: crossPortfolioSuggestions.length
+      }
+    };
   };
+
+  // Helper to get portfolio name from org_id (for demo)
+  const getPortfolioName = (orgId) => {
+    const org = authContext?.allDemoOrgs?.find(o => o.id === orgId);
+    return org?.name || 'Unknown Portfolio';
+  };
+
 
 
   const updateGateway = (projectId, market, gatewayName, updateData) => {

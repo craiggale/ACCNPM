@@ -55,6 +55,9 @@ const ResourceManagement = () => {
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [gaps, setGaps] = useState([]);
+    const [sharedAssignments, setSharedAssignments] = useState([]);
+    const [crossPortfolioSuggestions, setCrossPortfolioSuggestions] = useState([]);
+    const [assignmentSummary, setAssignmentSummary] = useState(null);
     const [showGaps, setShowGaps] = useState(false);
     const [selectedResource, setSelectedResource] = useState(null);
 
@@ -75,8 +78,19 @@ const ResourceManagement = () => {
     const totalAssigned = useMemo(() => Object.values(resourceUtilization).reduce((sum, val) => sum + val, 0), [resourceUtilization]);
 
     const handleAutoAssign = () => {
-        const foundGaps = autoAssignTasks();
-        setGaps(foundGaps);
+        const result = autoAssignTasks();
+        // Handle both old (array) and new (object) return types
+        if (Array.isArray(result)) {
+            setGaps(result);
+            setSharedAssignments([]);
+            setCrossPortfolioSuggestions([]);
+            setAssignmentSummary(null);
+        } else {
+            setGaps(result.gaps || []);
+            setSharedAssignments(result.sharedAssignments || []);
+            setCrossPortfolioSuggestions(result.crossPortfolioSuggestions || []);
+            setAssignmentSummary(result.summary || null);
+        }
         setShowGaps(true);
     };
 
@@ -181,13 +195,115 @@ const ResourceManagement = () => {
             </header>
 
 
+            {/* Assignment Summary */}
+            {showGaps && assignmentSummary && (
+                <div className="card" style={{
+                    marginBottom: 'var(--spacing-lg)',
+                    border: '1px solid var(--accent-primary)',
+                    backgroundColor: 'rgba(161, 0, 255, 0.05)',
+                    padding: 'var(--spacing-md)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 className="text-lg" style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Sparkles size={20} /> Auto-Assign Summary
+                        </h3>
+                        <button onClick={() => setShowGaps(false)} className="btn-ghost"><X size={20} /></button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--success)' }}>{assignmentSummary.assigned}</div>
+                            <div className="text-sm text-muted">Assigned</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--warning)' }}>{assignmentSummary.unassigned}</div>
+                            <div className="text-sm text-muted">Gaps</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--accent-primary)' }}>{assignmentSummary.usedSharedResources}</div>
+                            <div className="text-sm text-muted">Shared Used</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10B981' }}>{assignmentSummary.canReallocate}</div>
+                            <div className="text-sm text-muted">Can Reallocate</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Shared Resource Assignments */}
+            {showGaps && sharedAssignments.length > 0 && (
+                <div className="card" style={{ marginBottom: 'var(--spacing-md)', border: '1px solid var(--accent-primary)', backgroundColor: 'rgba(161, 0, 255, 0.03)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                        <Globe size={18} color="var(--accent-primary)" />
+                        <h4 className="text-lg" style={{ color: 'var(--accent-primary)' }}>Assigned to Shared Resources ({sharedAssignments.length})</h4>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                        {sharedAssignments.map((item, index) => (
+                            <div key={index} style={{ padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(161, 0, 255, 0.2)' }}>
+                                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{item.taskTitle}</div>
+                                <div className="text-sm text-muted" style={{ marginBottom: '0.5rem' }}>{item.projectName}</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span className="text-sm" style={{ padding: '0.1rem 0.5rem', borderRadius: '1rem', backgroundColor: 'rgba(161, 0, 255, 0.1)', color: 'var(--accent-primary)' }}>
+                                        → {item.assignedTo}
+                                    </span>
+                                    <span className="text-sm text-muted">{item.estimate}h</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Cross-Portfolio Reallocation Suggestions */}
+            {showGaps && crossPortfolioSuggestions.length > 0 && (
+                <div className="card" style={{ marginBottom: 'var(--spacing-md)', border: '1px solid #10B981', backgroundColor: 'rgba(16, 185, 129, 0.03)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                        <Globe size={18} color="#10B981" />
+                        <h4 className="text-lg" style={{ color: '#10B981' }}>Cross-Portfolio Reallocation Suggestions ({crossPortfolioSuggestions.length})</h4>
+                    </div>
+                    <p className="text-sm text-muted" style={{ marginBottom: '1rem' }}>
+                        These tasks could be filled by reallocating resources from other portfolios.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {crossPortfolioSuggestions.map((suggestion, index) => (
+                            <div key={index} style={{ padding: '1rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--bg-tertiary)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 600 }}>{suggestion.taskTitle}</div>
+                                        <div className="text-sm text-muted">{suggestion.projectName} • {suggestion.requiredTeam} • {suggestion.estimate}h</div>
+                                    </div>
+                                </div>
+                                <div className="text-sm" style={{ marginBottom: '0.5rem', fontWeight: 500 }}>Available candidates from other portfolios:</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    {suggestion.candidates.map((candidate, i) => (
+                                        <div key={i} style={{
+                                            padding: '0.5rem 0.75rem',
+                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid rgba(16, 185, 129, 0.2)',
+                                            fontSize: '0.875rem'
+                                        }}>
+                                            <div style={{ fontWeight: 500, color: '#10B981' }}>{candidate.name}</div>
+                                            <div className="text-sm text-muted">
+                                                {candidate.portfolioName} • {candidate.currentAllocation}% allocated • {candidate.availableHours}h free
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Gaps / Unassigned Tasks */}
             {showGaps && gaps.length > 0 && (
                 <div className="card" style={{ marginBottom: 'var(--spacing-xl)', border: '1px solid var(--warning)', backgroundColor: 'rgba(245, 158, 11, 0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <h3 className="text-lg" style={{ color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <AlertCircle size={20} /> Resourcing Gaps Detected ({gaps.length})
+                            <AlertCircle size={20} /> Resourcing Gaps ({gaps.length})
                         </h3>
-                        <button onClick={() => setShowGaps(false)} className="btn-ghost"><X size={20} /></button>
+                        {!assignmentSummary && <button onClick={() => setShowGaps(false)} className="btn-ghost"><X size={20} /></button>}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                         {gaps.map((gap, index) => (
@@ -200,13 +316,18 @@ const ResourceManagement = () => {
                                     </span>
                                     <span className="text-sm text-muted">{gap.estimate}h</span>
                                 </div>
+                                {gap.hasCrossPortfolioOption && (
+                                    <div className="text-sm" style={{ marginTop: '0.5rem', color: '#10B981' }}>
+                                        ✓ Cross-portfolio option available
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
                 </div>
             )}
 
-            {showGaps && gaps.length === 0 && (
+            {showGaps && gaps.length === 0 && !assignmentSummary && (
                 <div className="card" style={{ marginBottom: 'var(--spacing-xl)', border: '1px solid var(--success)', backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3 className="text-lg" style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

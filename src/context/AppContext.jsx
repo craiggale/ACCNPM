@@ -96,16 +96,17 @@ export const AppProvider = ({ children }) => {
   const [taskTemplates, setTaskTemplates] = useState(INITIAL_TASK_TEMPLATES);
   const [gatewayTemplates, setGatewayTemplates] = useState(INITIAL_GATEWAY_TEMPLATES);
 
-  // Mock Data - Projects
+  // Mock Data - Projects (3 per portfolio = 9 total)
   const [projects, setProjects] = useState([
+    // ========== FALCON MOTORS (Automotive) ==========
     {
       id: 1,
-      name: 'Falcon GT',
+      name: 'Falcon GT Website',
       status: 'Active',
       health: 'On Track',
-      pm: 'Anand',
+      pm: 'Sarah Jenkins',
       pmUserId: 'user-sarah',
-      org_id: 'org-acme',
+      org_id: 'org-falcon',
       startDate: '2026-01-01',
       endDate: '2026-06-30',
       originalEndDate: '2026-06-30',
@@ -114,342 +115,256 @@ export const AppProvider = ({ children }) => {
       launchDetails: [
         {
           market: 'Global',
-          goalLive: '2026-01-01',
+          goalLive: '2026-06-30',
           inputGateways: [
-            {
-              name: 'Design Sign-off',
-              status: 'Received',
-              expectedDate: '2026-01-01',
-              receivedDate: '2025-12-15',
-              versions: [
-                { version: 1, status: 'Received', date: '2025-12-10', isOnTime: true, notes: 'Initial delivery' },
-                { version: 2, status: 'Received', date: '2025-12-15', isOnTime: true, notes: 'Updated based on feedback' }
-              ]
-            },
-            { name: 'Content Approval', status: 'Received', expectedDate: '2026-01-01', receivedDate: '2025-12-20' }
-          ]
-        },
-        ...Array.from({ length: 10 }).map((_, i) => ({
-          market: ['US', 'UK', 'Germany', 'France', 'Italy', 'Spain', 'Japan', 'Australia', 'Brazil', 'Canada'][i],
-          goalLive: `2026-${String(i + 1).padStart(2, '0')}-01`,
-          inputGateways: [
-            { name: 'Design Sign-off', status: i % 2 === 0 ? 'Received' : 'Pending', expectedDate: `2026-${String(i + 1).padStart(2, '0')}-15`, receivedDate: i % 2 === 0 ? `2026-${String(i + 1).padStart(2, '0')}-10` : null },
-            { name: 'Content Approval', status: 'Pending', expectedDate: `2026-${String(i + 2).padStart(2, '0')}-01`, receivedDate: null }
-          ]
-        }))]
-    },
-    {
-      id: 2,
-      name: 'Eagle SUV',
-      status: 'Planning',
-      health: 'At Risk',
-      pm: 'Sarah',
-      pmUserId: 'user-mike',
-      org_id: 'org-acme',
-      startDate: '2026-03-01',
-      endDate: '2026-08-31',
-      originalEndDate: '2026-08-15',
-      type: 'Configurator',
-      scale: 'Medium',
-      launchDetails: [
-        {
-          market: 'Global',
-          goalLive: '2026-03-01',
-          inputGateways: [
-            { name: '3D Asset Freeze', status: 'Received', expectedDate: '2026-02-15', receivedDate: '2026-02-10' }
-          ]
-        },
-        ...Array.from({ length: 10 }).map((_, i) => ({
-          market: ['US', 'UK', 'Germany', 'France', 'Italy', 'Spain', 'Japan', 'Australia', 'Brazil', 'Canada'][i],
-          goalLive: `2026-${String(i + 2).padStart(2, '0')}-15`,
-          inputGateways: [
-            { name: '3D Asset Freeze', status: i < 3 ? 'Received' : 'Pending', expectedDate: `2026-${String(i + 3).padStart(2, '0')}-01`, receivedDate: i < 3 ? `2026-${String(i + 3).padStart(2, '0')}-01` : null }
-          ]
-        }))]
-    },
-    {
-      id: 3,
-      name: 'Phoenix EV',
-      status: 'Completed',
-      health: 'On Track',
-      pm: 'Marcus',
-      pmUserId: 'user-sarah',
-      org_id: 'org-acme',
-      startDate: '2025-01-01',
-      endDate: '2025-12-31',
-      originalEndDate: '2025-12-31',
-      type: 'Asset Production',
-      scale: 'Large',
-      launchDetails: [
-        {
-          market: 'Global',
-          goalLive: '2025-12-01',
-          inputGateways: [
-            { name: 'Creative Brief', status: 'Received', expectedDate: '2025-11-01', receivedDate: '2025-10-28' },
-            { name: 'High-Res Final', status: 'Received', expectedDate: '2025-12-01', receivedDate: '2025-12-01' }
-          ]
-        },
-        {
-          market: 'US',
-          goalLive: '2026-01-01',
-          inputGateways: [
-            { name: 'Creative Brief', status: 'Received', expectedDate: '2025-11-01', receivedDate: '2025-10-28' },
-            { name: 'High-Res Final', status: 'Received', expectedDate: '2025-12-01', receivedDate: '2025-12-01' }
+            { name: 'Design Sign-off', status: 'Received', expectedDate: '2026-02-01', receivedDate: '2026-01-28' },
+            { name: 'Content Approval', status: 'Pending', expectedDate: '2026-03-15', receivedDate: null }
           ]
         }
       ]
     },
     {
-      id: 4,
-      name: 'Hawk Sedan',
-      status: 'Proposed',
+      id: 2,
+      name: 'Eagle SUV Configurator',
+      status: 'Active',
+      health: 'At Risk',
+      pm: 'Mike Ross',
+      pmUserId: 'user-mike',
+      org_id: 'org-falcon',
+      startDate: '2026-02-01',
+      endDate: '2026-07-31',
+      originalEndDate: '2026-07-15',
+      type: 'Configurator',
+      scale: 'Large',
+      launchDetails: [
+        {
+          market: 'Global',
+          goalLive: '2026-07-31',
+          inputGateways: [
+            { name: '3D Asset Freeze', status: 'Pending', expectedDate: '2026-03-01', receivedDate: null },
+            { name: 'Pricing Logic Approval', status: 'Pending', expectedDate: '2026-04-15', receivedDate: null }
+          ]
+        }
+      ]
+    },
+    {
+      id: 3,
+      name: 'Phoenix EV Campaign',
+      status: 'Planning',
       health: 'On Track',
-      pm: 'Anand',
-      pmUserId: 'user-sarah',
-      org_id: 'org-acme',
-      startDate: '2026-07-01',
-      endDate: '2026-12-31',
-      originalEndDate: '2026-12-31',
-      type: 'Website',
-      scale: 'Small',
+      pm: 'James Wilson',
+      pmUserId: 'user-james',
+      org_id: 'org-falcon',
+      startDate: '2026-04-01',
+      endDate: '2026-09-30',
+      originalEndDate: '2026-09-30',
+      type: 'Asset Production',
+      scale: 'Medium',
       launchDetails: []
+    },
+
+    // ========== NEXGEN HEALTH (Pharmaceutical) ==========
+    {
+      id: 4,
+      name: 'Patient Portal Redesign',
+      status: 'Active',
+      health: 'On Track',
+      pm: 'Emily Chen',
+      pmUserId: 'user-emily',
+      org_id: 'org-nexgen',
+      startDate: '2026-01-15',
+      endDate: '2026-05-31',
+      originalEndDate: '2026-05-31',
+      type: 'Website',
+      scale: 'Medium',
+      launchDetails: [
+        {
+          market: 'US',
+          goalLive: '2026-05-31',
+          inputGateways: [
+            { name: 'Design Sign-off', status: 'Received', expectedDate: '2026-02-15', receivedDate: '2026-02-10' },
+            { name: 'Content Approval', status: 'Received', expectedDate: '2026-03-01', receivedDate: '2026-03-01' }
+          ]
+        }
+      ]
     },
     {
       id: 5,
-      name: 'Phoenix EV - Rework Demo',
+      name: 'Sales Rep CRM Dashboard',
       status: 'Active',
       health: 'Late',
-      pm: 'Sarah',
-      pmUserId: 'user-mike',
-      org_id: 'org-acme',
+      pm: 'David Lee',
+      pmUserId: 'user-david',
+      org_id: 'org-nexgen',
       startDate: '2026-01-01',
-      endDate: '2026-03-31',
-      originalEndDate: '2026-03-15',
-      type: 'Website',
+      endDate: '2026-04-30',
+      originalEndDate: '2026-03-31',
+      type: 'Configurator',
       scale: 'Small',
       launchDetails: [
         {
           market: 'Global',
-          goalLive: '2026-03-31',
+          goalLive: '2026-04-30',
           inputGateways: [
             {
-              name: 'Design Sign-off',
-              status: 'Received',
-              expectedDate: '2026-01-15',
-              receivedDate: '2026-01-20',
-              versions: [
-                { version: 1, status: 'Late', date: '2026-01-10', isOnTime: false, notes: 'Rejected due to missing assets' },
-                { version: 2, status: 'Received', date: '2026-01-20', isOnTime: false, notes: 'Approved with conditions' }
+              name: '3D Asset Freeze', status: 'Received', expectedDate: '2026-01-15', receivedDate: '2026-01-20', versions: [
+                { version: 1, status: 'Late', date: '2026-01-20', isOnTime: false, notes: 'Delayed due to data migration' }
               ]
-            },
-            { name: 'Content Approval', status: 'Pending', expectedDate: '2026-02-01', receivedDate: null }
+            }
           ]
         }
       ]
     },
     {
       id: 6,
-      name: 'Falcon GT (2025)',
-      status: 'Completed',
+      name: 'Product Launch Assets',
+      status: 'Proposed',
       health: 'On Track',
-      pm: 'Anand',
-      pmUserId: 'user-emily',
-      org_id: 'org-globex',
-      startDate: '2025-01-01',
-      endDate: '2025-06-30',
-      originalEndDate: '2025-06-30',
-      type: 'Website',
-      scale: 'Medium',
+      pm: 'Anna Garcia',
+      pmUserId: 'user-anna',
+      org_id: 'org-nexgen',
+      startDate: '2026-06-01',
+      endDate: '2026-10-31',
+      originalEndDate: '2026-10-31',
+      type: 'Asset Production',
+      scale: 'Large',
       launchDetails: []
     },
+
+    // ========== VERTEX TECH (Technology) ==========
     {
       id: 7,
-      name: 'Falcon GT (2024)',
-      status: 'Completed',
+      name: 'Analytics Dashboard v2',
+      status: 'Active',
       health: 'On Track',
-      pm: 'Anand',
-      pmUserId: 'user-sarah',
-      org_id: 'org-acme',
-      startDate: '2024-01-01',
-      endDate: '2024-06-30',
-      originalEndDate: '2024-06-30',
+      pm: 'Robert Taylor',
+      pmUserId: 'user-robert',
+      org_id: 'org-vertex',
+      startDate: '2026-02-01',
+      endDate: '2026-06-30',
+      originalEndDate: '2026-06-30',
       type: 'Website',
       scale: 'Medium',
-      launchDetails: []
+      launchDetails: [
+        {
+          market: 'Global',
+          goalLive: '2026-06-30',
+          inputGateways: [
+            { name: 'Design Sign-off', status: 'Received', expectedDate: '2026-03-01', receivedDate: '2026-02-28' },
+            { name: 'QA Sign-off', status: 'Pending', expectedDate: '2026-05-15', receivedDate: null }
+          ]
+        }
+      ]
     },
     {
       id: 8,
-      name: 'Eagle SUV (2025)',
-      status: 'Completed',
-      health: 'On Track',
-      pm: 'Sarah',
-      pmUserId: 'user-emily',
-      org_id: 'org-globex',
-      startDate: '2025-03-01',
-      endDate: '2025-08-31',
-      originalEndDate: '2025-08-31',
+      name: 'Developer Platform',
+      status: 'Active',
+      health: 'At Risk',
+      pm: 'Lisa Wong',
+      pmUserId: 'user-lisa',
+      org_id: 'org-vertex',
+      startDate: '2026-01-01',
+      endDate: '2026-08-31',
+      originalEndDate: '2026-07-31',
       type: 'Configurator',
-      scale: 'Medium',
-      launchDetails: []
+      scale: 'Large',
+      launchDetails: [
+        {
+          market: 'Global',
+          goalLive: '2026-08-31',
+          inputGateways: [
+            { name: '3D Asset Freeze', status: 'Received', expectedDate: '2026-02-15', receivedDate: '2026-02-14' },
+            { name: 'Security Review', status: 'Pending', expectedDate: '2026-06-01', receivedDate: null }
+          ]
+        }
+      ]
     },
     {
       id: 9,
-      name: 'Eagle SUV (2024)',
-      status: 'Completed',
+      name: 'Brand Campaign 2026',
+      status: 'Planning',
       health: 'On Track',
-      pm: 'Sarah',
-      pmUserId: 'user-david',
-      org_id: 'org-globex',
-      startDate: '2024-03-01',
-      endDate: '2024-08-31',
-      originalEndDate: '2024-08-31',
-      type: 'Configurator',
+      pm: 'Tom Baker',
+      pmUserId: 'user-tom',
+      org_id: 'org-vertex',
+      startDate: '2026-05-01',
+      endDate: '2026-11-30',
+      originalEndDate: '2026-11-30',
+      type: 'Asset Production',
       scale: 'Medium',
-      launchDetails: []
-    },
-    {
-      id: 10,
-      name: 'Phoenix EV (2024)',
-      status: 'Completed',
-      health: 'On Track',
-      pm: 'Marcus',
-      pmUserId: 'user-emily',
-      org_id: 'org-globex',
-      startDate: '2024-01-01',
-      endDate: '2024-12-31',
-      originalEndDate: '2024-12-31',
-      type: 'Asset Production',
-      scale: 'Large',
-      launchDetails: []
-    },
-    {
-      id: 11,
-      name: 'Phoenix EV (2023)',
-      status: 'Completed',
-      health: 'On Track',
-      pm: 'Marcus',
-      pmUserId: 'user-david',
-      org_id: 'org-globex',
-      startDate: '2023-01-01',
-      endDate: '2023-12-31',
-      originalEndDate: '2023-12-31',
-      type: 'Asset Production',
-      scale: 'Large',
-      launchDetails: []
-    },
-    {
-      id: 12,
-      name: 'Hawk Sedan (2025)',
-      status: 'Completed',
-      health: 'On Track',
-      pm: 'Anand',
-      pmUserId: 'user-sarah',
-      org_id: 'org-acme',
-      startDate: '2025-07-01',
-      endDate: '2025-12-31',
-      originalEndDate: '2025-12-31',
-      type: 'Website',
-      scale: 'Small',
-      launchDetails: []
-    },
-    {
-      id: 13,
-      name: 'Hawk Sedan (2024)',
-      status: 'Completed',
-      health: 'On Track',
-      pm: 'Anand',
-      pmUserId: 'user-sarah',
-      org_id: 'org-acme',
-      startDate: '2024-07-01',
-      endDate: '2024-12-31',
-      originalEndDate: '2024-12-31',
-      type: 'Website',
-      scale: 'Small',
       launchDetails: []
     }
   ]);
 
-  // Mock Data - Resources
+
+  // Mock Data - Resources (3 per portfolio = 9 total)
   const [resources, setResources] = useState([
-    { id: 1, name: 'Sarah Jenkins', role: 'Frontend Lead', team: 'Website', capacity: 160, leave: 0, org_id: 'org-acme', userId: 'user-sarah' },
-    { id: 2, name: 'Mike Ross', role: '3D Artist', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-acme', userId: 'user-mike' },
-    { id: 3, name: 'David Lee', role: 'Product Owner', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-globex', userId: 'user-david' },
-    { id: 4, name: 'Emily Chen', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: 'org-globex', userId: 'user-emily' },
-    { id: 5, name: 'James Wilson', role: 'QA', team: 'Website', capacity: 160, leave: 0, org_id: 'org-acme' },
-    { id: 6, name: 'Anna Garcia', role: 'Designer', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-globex' },
-    { id: 7, name: 'Robert Taylor', role: 'Manager', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-acme' },
-    { id: 8, name: 'Lisa Wong', role: 'Developer', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-globex' },
-    { id: 9, name: 'Tom Baker', role: 'QA', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-acme' },
+    // Falcon Motors Team
+    { id: 1, name: 'Sarah Jenkins', role: 'Frontend Lead', team: 'Website', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-sarah' },
+    { id: 2, name: 'Mike Ross', role: '3D Artist', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-mike' },
+    { id: 3, name: 'James Wilson', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-james' },
+
+    // NexGen Health Team
+    { id: 4, name: 'Emily Chen', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-emily' },
+    { id: 5, name: 'David Lee', role: 'Product Owner', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-david' },
+    { id: 6, name: 'Anna Garcia', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-anna' },
+
+    // Vertex Tech Team
+    { id: 7, name: 'Robert Taylor', role: 'Manager', team: 'Website', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-robert' },
+    { id: 8, name: 'Lisa Wong', role: 'Developer', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-lisa' },
+    { id: 9, name: 'Tom Baker', role: 'QA', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-tom' },
   ]);
 
-  // Mock Data - Initiatives
+
+  // Mock Data - Initiatives (1 per portfolio = 3 total)
   const [initiatives, setInitiatives] = useState([
     {
       id: 1,
-      name: 'Auto-Bot Rollout',
-      businessGoal: 'Reduce manual data entry by 50%',
+      name: 'Design System Automation',
+      businessGoal: 'Reduce design-to-development handoff time by 40%',
       status: 'On Track',
-      valueProposition: 'Automate repetitive tasks and reduce manual data entry time.',
+      valueProposition: 'Automate component generation from Figma designs.',
       changeType: 'Automate Task',
-      startDate: '2025-01-01',
-      org_id: 'org-acme',
+      startDate: '2026-01-01',
+      org_id: 'org-falcon',
       valueMetrics: ['Efficiency Gains - FTE Hour Reduction (Hrs)', 'Efficiency Gains - FTE Fee Reduction (£)'],
       impactedTasks: [
-        { taskId: 1001, taskTitle: 'Frontend Development', projectId: 6, valuesAdded: [{ metric: 'Efficiency Gains - FTE Hour Reduction (Hrs)', value: 40 }, { metric: 'Efficiency Gains - FTE Fee Reduction (£)', value: 2000 }], dateLinked: '2025-02-15' },
-        { taskId: 1002, taskTitle: 'QA', projectId: 6, valuesAdded: [{ metric: 'Efficiency Gains - FTE Hour Reduction (Hrs)', value: 25 }, { metric: 'Efficiency Gains - FTE Fee Reduction (£)', value: 1250 }], dateLinked: '2025-03-10' },
-        { taskId: 1003, taskTitle: 'UI Implementation', projectId: 8, valuesAdded: [{ metric: 'Efficiency Gains - FTE Hour Reduction (Hrs)', value: 40 }, { metric: 'Efficiency Gains - FTE Fee Reduction (£)', value: 2000 }], dateLinked: '2025-04-20' },
-        { taskId: 1004, taskTitle: 'Integration Testing', projectId: 8, valuesAdded: [{ metric: 'Efficiency Gains - FTE Hour Reduction (Hrs)', value: 25 }, { metric: 'Efficiency Gains - FTE Fee Reduction (£)', value: 1250 }], dateLinked: '2025-05-05' },
-        { taskId: 1005, taskTitle: 'Frontend Dev', projectId: 12, valuesAdded: [{ metric: 'Efficiency Gains - FTE Hour Reduction (Hrs)', value: 30 }, { metric: 'Efficiency Gains - FTE Fee Reduction (£)', value: 1500 }], dateLinked: '2025-08-12' }
+        { taskId: 1001, taskTitle: 'Frontend Development', projectId: 1, valuesAdded: [{ metric: 'Efficiency Gains - FTE Hour Reduction (Hrs)', value: 40 }, { metric: 'Efficiency Gains - FTE Fee Reduction (£)', value: 2000 }], dateLinked: '2026-02-15' },
+        { taskId: 1002, taskTitle: 'UI Implementation', projectId: 2, valuesAdded: [{ metric: 'Efficiency Gains - FTE Hour Reduction (Hrs)', value: 35 }, { metric: 'Efficiency Gains - FTE Fee Reduction (£)', value: 1750 }], dateLinked: '2026-03-20' }
       ]
     },
     {
       id: 2,
-      name: 'Global Asset Reuse Repository',
-      businessGoal: 'Reduce external asset purchase costs by 40%',
-      status: 'On Track',
-      valueProposition: 'Centralize assets to prevent duplicate purchases.',
+      name: 'Content Management Optimization',
+      businessGoal: 'Reduce content update cycle time by 50%',
+      status: 'Planning',
+      valueProposition: 'Streamline approval workflows and enable self-service content updates.',
       changeType: 'Process Improvement',
-      startDate: '2024-11-01',
-      org_id: 'org-acme',
+      startDate: '2026-02-01',
+      org_id: 'org-nexgen',
       valueMetrics: ['Efficiency Gains - Asset Cost Reduction (£)'],
       impactedTasks: [
-        { taskId: 2001, taskTitle: 'UI Design', projectId: 6, valuesAdded: [{ metric: 'Efficiency Gains - Asset Cost Reduction (£)', value: 5000 }], dateLinked: '2025-01-20' },
-        { taskId: 2002, taskTitle: '3D Asset Prep', projectId: 8, valuesAdded: [{ metric: 'Efficiency Gains - Asset Cost Reduction (£)', value: 12000 }], dateLinked: '2025-03-15' },
-        { taskId: 2003, taskTitle: 'Full CGI Video', projectId: 10, valuesAdded: [{ metric: 'Efficiency Gains - Asset Cost Reduction (£)', value: 8500 }], dateLinked: '2024-06-10' },
-        { taskId: 2004, taskTitle: 'UI Design', projectId: 12, valuesAdded: [{ metric: 'Efficiency Gains - Asset Cost Reduction (£)', value: 4500 }], dateLinked: '2025-07-25' }
+        { taskId: 2001, taskTitle: 'CMS Integration', projectId: 4, valuesAdded: [{ metric: 'Efficiency Gains - Asset Cost Reduction (£)', value: 8000 }], dateLinked: '2026-03-15' }
       ]
     },
     {
       id: 3,
-      name: 'Personalized Product Recommender',
-      businessGoal: 'Increase cross-sell revenue by £1M',
-      status: 'Planning',
-      valueProposition: 'Use AI to suggest relevant add-ons during checkout.',
-      changeType: 'Technology Upgrade',
-      startDate: '2025-03-01',
-      org_id: 'org-globex',
-      valueMetrics: ['Growth Impact - Sales Revenue (£)'],
-      impactedTasks: [
-        { taskId: 3001, taskTitle: 'CMS Integration', projectId: 6, valuesAdded: [{ metric: 'Growth Impact - Sales Revenue (£)', value: 150000 }], dateLinked: '2025-05-30' },
-        { taskId: 3002, taskTitle: 'Frontend Dev', projectId: 12, valuesAdded: [{ metric: 'Growth Impact - Sales Revenue (£)', value: 75000 }], dateLinked: '2025-11-15' }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Core Web Vitals Optimization',
-      businessGoal: 'Improve site performance to boost customer satisfaction',
+      name: 'Performance Benchmarking Suite',
+      businessGoal: 'Achieve Core Web Vitals across all platforms',
       status: 'At Risk',
-      valueProposition: 'Optimize LCP and CLS scores across all markets.',
+      valueProposition: 'Automated performance monitoring and alerting.',
       changeType: 'Technology Upgrade',
-      startDate: '2025-02-01',
-      org_id: 'org-globex',
+      startDate: '2026-02-01',
+      org_id: 'org-vertex',
       valueMetrics: ['Brand & Experience - NPS Score (%)'],
       impactedTasks: [
-        { taskId: 4001, taskTitle: 'Frontend Dev', projectId: 6, valuesAdded: [{ metric: 'Brand & Experience - NPS Score (%)', value: 5 }], dateLinked: '2025-04-10' },
-        { taskId: 4002, taskTitle: 'Frontend Dev', projectId: 12, valuesAdded: [{ metric: 'Brand & Experience - NPS Score (%)', value: 3 }], dateLinked: '2025-09-20' }
+        { taskId: 3001, taskTitle: 'Performance Optimization', projectId: 7, valuesAdded: [{ metric: 'Brand & Experience - NPS Score (%)', value: 8 }], dateLinked: '2026-04-10' },
+        { taskId: 3002, taskTitle: 'Security Hardening', projectId: 8, valuesAdded: [{ metric: 'Brand & Experience - NPS Score (%)', value: 5 }], dateLinked: '2026-05-20' }
       ]
     }
   ]);
+
 
   // Mock Data - Tasks (for Track the Present)
   const [tasks, setTasks] = useState(() => {

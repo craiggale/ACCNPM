@@ -2,54 +2,115 @@
  * Multi-Tenant Auth Data
  * Mock data for simulating multi-tenant RBAC on the frontend
  * Note: "Organizations" are referred to as "Portfolios" in the UI
+ * 
+ * 3 Portfolios across different industries:
+ * - Falcon Motors (Automotive)
+ * - NexGen Health (Pharmaceutical)  
+ * - Vertex Tech (Technology)
  */
 
 export const ORGANIZATIONS = {
-    'org-acme': {
-        id: 'org-acme',
-        name: 'Acme Portfolio',
+    'org-falcon': {
+        id: 'org-falcon',
+        name: 'Falcon Motors',
+        industry: 'Automotive',
+        slug: 'falcon',
         logo: null,
         theme: '#A100FF'
     },
-    'org-globex': {
-        id: 'org-globex',
-        name: 'Globex Portfolio',
+    'org-nexgen': {
+        id: 'org-nexgen',
+        name: 'NexGen Health',
+        industry: 'Pharmaceutical',
+        slug: 'nexgen',
         logo: null,
         theme: '#10B981'
+    },
+    'org-vertex': {
+        id: 'org-vertex',
+        name: 'Vertex Tech',
+        industry: 'Technology',
+        slug: 'vertex',
+        logo: null,
+        theme: '#3B82F6'
     }
 };
 
-
 export const USERS = {
+    // Falcon Motors Team
     'user-sarah': {
         id: 'user-sarah',
         name: 'Sarah Jenkins',
-        email: 'sarah@acme.com',
-        org_id: 'org-acme',
+        email: 'sarah@falcon-motors.com',
+        org_id: 'org-falcon',
         role: 'Admin',
         avatar: null
     },
     'user-mike': {
         id: 'user-mike',
         name: 'Mike Ross',
-        email: 'mike@acme.com',
-        org_id: 'org-acme',
+        email: 'mike@falcon-motors.com',
+        org_id: 'org-falcon',
         role: 'User',
         avatar: null
     },
+    'user-james': {
+        id: 'user-james',
+        name: 'James Wilson',
+        email: 'james@falcon-motors.com',
+        org_id: 'org-falcon',
+        role: 'User',
+        avatar: null
+    },
+
+    // NexGen Health Team
     'user-emily': {
         id: 'user-emily',
         name: 'Emily Chen',
-        email: 'emily@globex.com',
-        org_id: 'org-globex',
+        email: 'emily@nexgen-health.com',
+        org_id: 'org-nexgen',
         role: 'Admin',
         avatar: null
     },
     'user-david': {
         id: 'user-david',
         name: 'David Lee',
-        email: 'david@globex.com',
-        org_id: 'org-globex',
+        email: 'david@nexgen-health.com',
+        org_id: 'org-nexgen',
+        role: 'User',
+        avatar: null
+    },
+    'user-anna': {
+        id: 'user-anna',
+        name: 'Anna Garcia',
+        email: 'anna@nexgen-health.com',
+        org_id: 'org-nexgen',
+        role: 'User',
+        avatar: null
+    },
+
+    // Vertex Tech Team
+    'user-robert': {
+        id: 'user-robert',
+        name: 'Robert Taylor',
+        email: 'robert@vertex-tech.com',
+        org_id: 'org-vertex',
+        role: 'Admin',
+        avatar: null
+    },
+    'user-lisa': {
+        id: 'user-lisa',
+        name: 'Lisa Wong',
+        email: 'lisa@vertex-tech.com',
+        org_id: 'org-vertex',
+        role: 'User',
+        avatar: null
+    },
+    'user-tom': {
+        id: 'user-tom',
+        name: 'Tom Baker',
+        email: 'tom@vertex-tech.com',
+        org_id: 'org-vertex',
         role: 'User',
         avatar: null
     }

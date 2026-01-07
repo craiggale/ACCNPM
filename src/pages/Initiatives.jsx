@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { Rocket, Plus, Target, TrendingUp, Clock, CheckCircle, AlertTriangle, ArrowRight, X, Edit2, Trash2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 import ValueDashboard from '../components/ValueDashboard';
 
 const Initiatives = () => {
-    const { initiatives, addInitiative } = useApp();
+    const { initiatives: allInitiatives, addInitiative } = useApp();
+    const { currentUser, isDemoMode } = useAuth();
+
+    // Tenant-aware filtering
+    const initiatives = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allInitiatives;
+        return allInitiatives.filter(i => i.org_id === currentUser.org_id);
+    }, [allInitiatives, currentUser, isDemoMode]);
+
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedInitiative, setSelectedInitiative] = useState(null);
     const [viewMode, setViewMode] = useState('dashboard'); // 'dashboard', 'list'
@@ -421,7 +430,21 @@ const Initiatives = () => {
 };
 
 const InitiativeDashboard = ({ initiative, onBack }) => {
-    const { projects, tasks, unlinkTaskFromInitiative, linkTaskToInitiative } = useApp();
+    const { projects: allProjects, tasks: allTasks, unlinkTaskFromInitiative, linkTaskToInitiative } = useApp();
+    const { currentUser, isDemoMode } = useAuth();
+
+    // Tenant-aware filtering
+    const projects = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allProjects;
+        return allProjects.filter(p => p.org_id === currentUser.org_id);
+    }, [allProjects, currentUser, isDemoMode]);
+
+    const tasks = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allTasks;
+        const orgProjectIds = projects.map(p => p.id);
+        return allTasks.filter(t => orgProjectIds.includes(t.projectId));
+    }, [allTasks, projects, currentUser, isDemoMode]);
+
     const [editingTask, setEditingTask] = useState(null);
     const [editValues, setEditValues] = useState({}); // { metric: value }
 

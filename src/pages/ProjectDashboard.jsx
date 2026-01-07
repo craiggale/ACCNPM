@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { differenceInDays, differenceInMonths } from 'date-fns';
 import { CheckCircle2, Clock, AlertCircle, MoreHorizontal, LayoutList, BarChart2, ArrowLeft, Calendar, CheckSquare, Plus, Trash2, Edit2, Save, X, Globe, RefreshCcw, DoorOpen, Search, Filter, MoreVertical, AlertTriangle, FileText, Archive, Rocket, LayoutGrid, List } from 'lucide-react';
 import GanttChart from '../components/GanttChart';
@@ -10,6 +11,35 @@ import TaskDetailPanel from '../components/TaskDetailPanel';
 
 const ProjectDashboard = () => {
     const { projects, tasks, resources, initiatives, addTask, updateTask, deleteTask, teams, linkTaskToInitiative } = useApp();
+    const { currentUser, isDemoMode } = useAuth();
+
+    // Tenant-aware filtering
+    const tenantProjects = useMemo(() => {
+        if (!isDemoMode || !currentUser) return projects;
+
+        // Filter by organization
+        let filtered = projects.filter(p => p.org_id === currentUser.org_id);
+
+        // RBAC: User role only sees assigned projects (PM or has tasks assigned)
+        if (currentUser.role === 'User') {
+            const userTaskProjectIds = tasks
+                .filter(t => t.assignee === currentUser.name)
+                .map(t => t.projectId);
+            filtered = filtered.filter(p =>
+                p.pmUserId === currentUser.id || userTaskProjectIds.includes(p.id)
+            );
+        }
+
+        return filtered;
+    }, [projects, tasks, currentUser, isDemoMode]);
+
+    const tenantResources = useMemo(() => {
+        if (!isDemoMode || !currentUser) return resources;
+        return resources.filter(r => r.org_id === currentUser.org_id);
+    }, [resources, currentUser, isDemoMode]);
+
+    const isAdmin = currentUser?.role === 'Admin';
+
     const [viewMode, setViewMode] = useState('list'); // 'list', 'gantt', 'detail'
     const [projectDisplayMode, setProjectDisplayMode] = useState('card'); // 'card', 'table'
     const [isAddingProject, setIsAddingProject] = useState(false);
@@ -48,7 +78,7 @@ const ProjectDashboard = () => {
         }
 
         const lowerQuery = query.toLowerCase();
-        const matchedProjects = projects.filter(p => p.name.toLowerCase().includes(lowerQuery));
+        const matchedProjects = tenantProjects.filter(p => p.name.toLowerCase().includes(lowerQuery));
         const matchedTasks = tasks.filter(t => t.title.toLowerCase().includes(lowerQuery));
         const matchedResources = resources.filter(r => r.name.toLowerCase().includes(lowerQuery));
 
@@ -182,7 +212,7 @@ const ProjectDashboard = () => {
     // --- RENDERERS ---
 
     const renderProjectList = () => {
-        const filteredProjects = projects.filter(p =>
+        const filteredProjects = tenantProjects.filter(p =>
             (selectedTeam === 'All' || p.type === selectedTeam) &&
             (healthFilter === 'All' || p.health === healthFilter)
         );
@@ -310,7 +340,7 @@ const ProjectDashboard = () => {
     };
 
     const renderProjectTable = () => {
-        const filteredProjects = projects.filter(p =>
+        const filteredProjects = tenantProjects.filter(p =>
             (selectedTeam === 'All' || p.type === selectedTeam) &&
             (healthFilter === 'All' || p.health === healthFilter)
         );
@@ -441,7 +471,7 @@ const ProjectDashboard = () => {
     };
 
     const renderCombinedGantt = () => {
-        const filteredProjects = projects.filter(p =>
+        const filteredProjects = tenantProjects.filter(p =>
             (selectedTeam === 'All' || p.type === selectedTeam) &&
             selectedProjectIds.includes(p.id)
         );
@@ -1106,9 +1136,11 @@ const ProjectDashboard = () => {
                                 <BarChart2 size={20} style={{ transform: 'rotate(90deg)' }} />
                             </button>
                         </div>
-                        <button className="btn btn-primary" onClick={() => setIsAddingProject(true)}>
-                            + New Project
-                        </button>
+                        {isAdmin && (
+                            <button className="btn btn-primary" onClick={() => setIsAddingProject(true)}>
+                                + New Project
+                            </button>
+                        )}
                     </div>
                 </header>
             )}

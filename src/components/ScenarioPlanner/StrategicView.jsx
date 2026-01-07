@@ -4,6 +4,7 @@ import GanttChart from '../GanttChart';
 import { Plus, Trash2, Zap, ArrowRight, BrainCircuit, RefreshCw, CheckCircle, Play, Filter, LayoutList, Calendar, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { addMonths, format, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { ResolutionEngine, getRoleDistribution, normalizeRole } from '../../utils/ResolutionEngine';
 import NewProjectPane from '../NewProjectPane';
 
@@ -14,7 +15,19 @@ import ScenarioTabs from './ScenarioTabs';
 
 const StrategicView = () => {
     console.log("StrategicView Rendering...");
-    const { projects: liveProjects = [], resources: liveResources = [], addProject } = useApp();
+    const { projects: allProjects = [], resources: allResources = [], addProject } = useApp();
+    const { currentUser, isDemoMode } = useAuth();
+
+    // Tenant-aware filtering
+    const liveProjects = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allProjects;
+        return allProjects.filter(p => p.org_id === currentUser.org_id);
+    }, [allProjects, currentUser, isDemoMode]);
+
+    const liveResources = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allResources;
+        return allResources.filter(r => r.org_id === currentUser.org_id);
+    }, [allResources, currentUser, isDemoMode]);
 
     // --- Sandbox State ---
     const [draftProjects, setDraftProjects] = useState([]);

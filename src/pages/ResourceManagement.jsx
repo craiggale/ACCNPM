@@ -1,9 +1,27 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { Users, Plus, Trash2, Save, X, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const ResourceManagement = () => {
-    const { resources, addResource, updateResource, deleteResource, teams, tasks, updateTask, autoAssignTasks } = useApp();
+    const { resources: allResources, addResource, updateResource, deleteResource, teams, tasks: allTasks, updateTask, autoAssignTasks } = useApp();
+    const { currentUser, isDemoMode } = useAuth();
+
+    // Tenant-aware filtering
+    const resources = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allResources;
+        return allResources.filter(r => r.org_id === currentUser.org_id);
+    }, [allResources, currentUser, isDemoMode]);
+
+    const tasks = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allTasks;
+        // Filter tasks to only those belonging to org's projects would need project data
+        // For now, just keep all tasks since they're filtered by resource
+        return allTasks;
+    }, [allTasks, currentUser, isDemoMode]);
+
+    const isAdmin = currentUser?.role === 'Admin';
+
     const [isAdding, setIsAdding] = useState(false);
     const [newResource, setNewResource] = useState({ name: '', role: 'Developer', team: 'Website', capacity: 160 });
     const [editingId, setEditingId] = useState(null);

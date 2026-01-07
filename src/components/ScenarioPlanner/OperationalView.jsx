@@ -1,4 +1,5 @@
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { CheckCircle, Circle, Trash2, Plus, X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { useState, useMemo } from 'react';
@@ -25,8 +26,20 @@ const ROLE_MAPPING = {
 };
 
 const OperationalView = () => {
-    const { projects, resources, selectedProjectIds, toggleProjectSelection, deleteProject } = useApp();
+    const { projects: allProjects, resources: allResources, selectedProjectIds, toggleProjectSelection, deleteProject } = useApp();
+    const { currentUser, isDemoMode } = useAuth();
     const [isAdding, setIsAdding] = useState(false);
+
+    // Tenant-aware filtering
+    const projects = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allProjects;
+        return allProjects.filter(p => p.org_id === currentUser.org_id);
+    }, [allProjects, currentUser, isDemoMode]);
+
+    const resources = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allResources;
+        return allResources.filter(r => r.org_id === currentUser.org_id);
+    }, [allResources, currentUser, isDemoMode]);
 
     // Filter State
     const [selectedTeam, setSelectedTeam] = useState('All');

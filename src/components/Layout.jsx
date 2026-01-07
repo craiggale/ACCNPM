@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Calendar, TrendingUp, Settings, Users, Rocket, Target, BarChart2 } from 'lucide-react';
+import TenantSwitcher from './TenantSwitcher';
 
 const Layout = ({ children }) => {
     const location = useLocation();
@@ -92,14 +93,9 @@ const Layout = ({ children }) => {
                     ))}
                 </nav>
 
+                {/* Tenant Switcher */}
                 <div style={{ marginTop: 'auto', paddingTop: 'var(--spacing-lg)', borderTop: '1px solid var(--bg-tertiary)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', color: 'var(--text-secondary)' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-tertiary)' }}></div>
-                        <div>
-                            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>Demo User</p>
-                            <p className="text-sm text-muted">Manager</p>
-                        </div>
-                    </div>
+                    <TenantSwitcher />
                 </div>
             </aside>
 
@@ -112,3 +108,4 @@ const Layout = ({ children }) => {
 };
 
 export default Layout;
+

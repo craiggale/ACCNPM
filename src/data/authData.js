@@ -1,22 +1,24 @@
 /**
  * Multi-Tenant Auth Data
  * Mock data for simulating multi-tenant RBAC on the frontend
+ * Note: "Organizations" are referred to as "Portfolios" in the UI
  */
 
 export const ORGANIZATIONS = {
     'org-acme': {
         id: 'org-acme',
-        name: 'Acme Corporation',
+        name: 'Acme Portfolio',
         logo: null,
         theme: '#A100FF'
     },
     'org-globex': {
         id: 'org-globex',
-        name: 'Globex Inc.',
+        name: 'Globex Portfolio',
         logo: null,
         theme: '#10B981'
     }
 };
+
 
 export const USERS = {
     'user-sarah': {

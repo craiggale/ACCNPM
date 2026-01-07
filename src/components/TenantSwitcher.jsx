@@ -2,7 +2,7 @@
  * TenantSwitcher Component
  * 
  * In Demo Mode: Switches between demo users (different orgs + roles)
- * In Real Mode: Switches between user's assigned organizations
+ * In Real Mode: Switches between user's assigned portfolios
  */
 
 import React, { useState } from 'react';
@@ -16,8 +16,8 @@ const TenantSwitcher = () => {
         currentOrgId,
         isDemoMode,
         switchUser,
-        switchOrganization,
-        userOrganizations,
+        switchPortfolio,
+        userPortfolios,
         allDemoUsers,
         allDemoOrgs
     } = useAuth();
@@ -27,9 +27,9 @@ const TenantSwitcher = () => {
 
     // Don't show if no user or (not demo mode and no orgs to switch to)
     if (!currentUser) return null;
-    if (!isDemoMode && (!userOrganizations || userOrganizations.length <= 1)) return null;
+    if (!isDemoMode && (!userPortfolios || userPortfolios.length <= 1)) return null;
 
-    // Group users by organization (for demo mode)
+    // Group users by portfolio (for demo mode)
     const usersByOrg = isDemoMode ? allDemoOrgs.map(org => ({
         org,
         users: allDemoUsers.filter(u => u.org_id === org.id)
@@ -49,9 +49,9 @@ const TenantSwitcher = () => {
 
         setIsSwitching(true);
         try {
-            await switchOrganization(orgId);
+            await switchPortfolio(orgId);
         } catch (error) {
-            console.error('Failed to switch organization:', error);
+            console.error('Failed to switch portfolio:', error);
         } finally {
             setIsSwitching(false);
             setIsOpen(false);
@@ -86,7 +86,7 @@ const TenantSwitcher = () => {
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {currentOrg?.name || currentUser?.current_org_name || 'Organization'}
+                        {currentOrg?.name || currentUser?.current_org_name || 'Portfolio'}
                     </span>
                     <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
                         {currentUser?.name}
@@ -157,7 +157,7 @@ const TenantSwitcher = () => {
                                 ) : (
                                     <>
                                         <Building2 size={12} />
-                                        Switch Organization
+                                        Switch Portfolio
                                     </>
                                 )}
                             </div>
@@ -272,8 +272,8 @@ const TenantSwitcher = () => {
                                     </div>
                                 ))
                             ) : (
-                                /* Real Mode: Show user's assigned organizations */
-                                userOrganizations.map(org => {
+                                /* Real Mode: Show user's assigned portfolios */
+                                userPortfolios.map(org => {
                                     const isSelected = org.id === currentOrgId;
 
                                     return (
@@ -367,7 +367,7 @@ const TenantSwitcher = () => {
                         }}>
                             {isDemoMode
                                 ? 'Switch users to test tenant isolation & RBAC'
-                                : 'You can switch between your assigned organizations'
+                                : 'You can switch between your assigned portfolios'
                             }
                         </div>
                     </div>

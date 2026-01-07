@@ -1,15 +1,15 @@
 /**
- * OrgSelector - Modal for selecting organization during two-phase login
+ * PortfolioSelector - Modal for selecting portfolio during two-phase login
  * 
- * Displayed when a user has multiple organization assignments
+ * Displayed when a user has multiple portfolio assignments
  * and needs to choose which org to log into.
  */
 
 import React, { useState } from 'react';
 import { Building2, Check, Star, Loader2 } from 'lucide-react';
 
-const OrgSelector = ({
-    organizations,
+const PortfolioSelector = ({
+    portfolios,
     onSelect,
     onCancel,
     isLoading = false
@@ -24,7 +24,7 @@ const OrgSelector = ({
     };
 
     // Sort to show primary org first
-    const sortedOrgs = [...organizations].sort((a, b) => {
+    const sortedOrgs = [...portfolios].sort((a, b) => {
         if (a.is_primary && !b.is_primary) return -1;
         if (!a.is_primary && b.is_primary) return 1;
         return a.name.localeCompare(b.name);
@@ -73,17 +73,17 @@ const OrgSelector = ({
                         marginBottom: '0.5rem',
                         color: 'var(--text-primary)'
                     }}>
-                        Select Organization
+                        Select Portfolio
                     </h2>
                     <p style={{
                         color: 'var(--text-muted)',
                         fontSize: '0.875rem'
                     }}>
-                        You have access to multiple organizations. Choose which one to access.
+                        You have access to multiple portfolios. Choose which one to access.
                     </p>
                 </div>
 
-                {/* Organization List */}
+                {/* Portfolio List */}
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -146,7 +146,7 @@ const OrgSelector = ({
                                                     size={14}
                                                     color="var(--warning)"
                                                     fill="var(--warning)"
-                                                    title="Primary Organization"
+                                                    title="Primary Portfolio"
                                                 />
                                             )}
                                         </div>
@@ -231,4 +231,4 @@ const OrgSelector = ({
     );
 };
 
-export default OrgSelector;
+export default PortfolioSelector;

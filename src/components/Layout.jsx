@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, TrendingUp, Settings, Users, Rocket, Target, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, Calendar, TrendingUp, Settings, Users, Rocket, Target, BarChart2, Sun, Moon } from 'lucide-react';
 import TenantSwitcher from './TenantSwitcher';
+import { useTheme } from '../context/ThemeContext';
 
 const Layout = ({ children }) => {
     const location = useLocation();
+    const { theme, toggleTheme, isDark } = useTheme();
 
     const navSections = [
         {
@@ -42,12 +44,33 @@ const Layout = ({ children }) => {
                 display: 'flex',
                 flexDirection: 'column'
             }}>
-                <div style={{ marginBottom: 'var(--spacing-xl)', paddingLeft: 'var(--spacing-sm)' }}>
-                    <h1 className="text-xl" style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div style={{ width: '24px', height: '24px', background: 'var(--accent-primary)', borderRadius: '6px' }}></div>
-                        ACCN-PM
-                    </h1>
-                    <p className="text-sm text-muted" style={{ marginTop: '0.25rem' }}>Intelligent Project Mgmt</p>
+                <div style={{ marginBottom: 'var(--spacing-xl)', paddingLeft: 'var(--spacing-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <h1 className="text-xl" style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ width: '24px', height: '24px', background: 'var(--accent-primary)', borderRadius: '6px' }}></div>
+                            ACCN-PM
+                        </h1>
+                        <p className="text-sm text-muted" style={{ marginTop: '0.25rem' }}>Intelligent Project Mgmt</p>
+                    </div>
+                    {/* Theme Toggle */}
+                    <button
+                        onClick={toggleTheme}
+                        title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                        style={{
+                            padding: '0.5rem',
+                            borderRadius: 'var(--radius-md)',
+                            backgroundColor: 'var(--bg-tertiary)',
+                            border: 'none',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
                 </div>
 
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)', flex: 1, overflowY: 'auto' }}>

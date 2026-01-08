@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="dark"] {
   /* Color Palette - Premium Dark Theme */
   /* Primary: #000000, #111111, #A100FF */
   --bg-primary: #000000;
@@ -45,6 +46,50 @@
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 300ms ease;
+
+  /* Background gradient for dark mode */
+  --bg-gradient:
+    radial-gradient(circle at 0% 0%, rgba(161, 0, 255, 0.12) 0%, transparent 50%) no-repeat fixed,
+    radial-gradient(circle at 100% 100%, rgba(161, 0, 255, 0.08) 0%, transparent 50%) no-repeat fixed,
+    var(--bg-primary);
+}
+
+/* Light Mode Theme */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  /* White */
+  --bg-secondary: #f5f5f5;
+  /* Gray 100 */
+  --bg-tertiary: #e5e5e5;
+  /* Gray 200 */
+
+  --text-primary: #171717;
+  /* Gray 900 */
+  --text-secondary: #525252;
+  /* Gray 600 */
+  --text-muted: #737373;
+  /* Gray 500 */
+
+  --accent-primary: #9333ea;
+  /* Purple 600 - slightly darker for light mode */
+  --accent-hover: #7e22ce;
+  /* Purple 700 */
+  --accent-glow: rgba(147, 51, 234, 0.3);
+
+  --success: #059669;
+  /* Emerald 600 */
+  --warning: #d97706;
+  /* Amber 600 */
+  --danger: #dc2626;
+  /* Red 600 */
+  --info: #0284c7;
+  /* Sky 600 */
+
+  /* Background gradient for light mode */
+  --bg-gradient:
+    radial-gradient(circle at 0% 0%, rgba(147, 51, 234, 0.08) 0%, transparent 50%) no-repeat fixed,
+    radial-gradient(circle at 100% 100%, rgba(147, 51, 234, 0.05) 0%, transparent 50%) no-repeat fixed,
+    var(--bg-primary);
 }
 
 * {
@@ -60,11 +105,10 @@ body {
   -webkit-font-smoothing: antialiased;
   position: relative;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(161, 0, 255, 0.12) 0%, transparent 50%) no-repeat fixed,
-    radial-gradient(circle at 100% 100%, rgba(161, 0, 255, 0.08) 0%, transparent 50%) no-repeat fixed,
-    var(--bg-primary) !important;
+  background: var(--bg-gradient) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
 
 
 

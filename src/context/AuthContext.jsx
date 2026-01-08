@@ -17,7 +17,8 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    // Start authenticated if in demo mode (default is demo mode)
+    const [isAuthenticated, setIsAuthenticated] = useState(true);
 
     // Two-phase login state
     const [pendingAuthToken, setPendingAuthToken] = useState(null);

@@ -16,7 +16,8 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    // Start not loading in demo mode (default) - only load if we have a token
+    const [isLoading, setIsLoading] = useState(() => !!localStorage.getItem('token'));
     // Start authenticated if in demo mode (default is demo mode)
     const [isAuthenticated, setIsAuthenticated] = useState(true);
 

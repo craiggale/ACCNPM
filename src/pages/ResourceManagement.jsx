@@ -274,18 +274,64 @@ const ResourceManagement = () => {
                     <p className="text-sm" style={{ marginBottom: '1rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                         <AlertCircle size={14} /> Review and confirm each suggested assignment below.
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '0.75rem' }}>
                         {sharedAssignments.map((item, index) => (
-                            <div key={index} style={{ padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(161, 0, 255, 0.2)' }}>
+                            <div key={index} style={{ padding: '1rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(161, 0, 255, 0.2)' }}>
+                                {/* Task Info */}
                                 <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{item.taskTitle}</div>
-                                <div className="text-sm text-muted" style={{ marginBottom: '0.5rem' }}>{item.projectName}</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                    <span className="text-sm" style={{ padding: '0.1rem 0.5rem', borderRadius: '1rem', backgroundColor: 'rgba(161, 0, 255, 0.1)', color: 'var(--accent-primary)' }}>
-                                        → {item.assignedTo}
-                                    </span>
-                                    <span className="text-sm text-muted">{item.estimate}h</span>
+                                <div className="text-sm text-muted" style={{ marginBottom: '0.75rem' }}>{item.projectName} • {item.estimate}h</div>
+
+                                {/* Resource & Portfolio Info */}
+                                <div style={{
+                                    padding: '0.75rem',
+                                    backgroundColor: 'rgba(161, 0, 255, 0.05)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    marginBottom: '0.75rem'
+                                }}>
+                                    <div style={{ fontWeight: 500, color: 'var(--accent-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Users size={14} />
+                                        {item.assignedTo}
+                                    </div>
+
+                                    {/* Portfolio Split Visualization */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div className="text-sm" style={{ marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ fontWeight: 500 }}>{item.primaryPortfolio || 'Primary Portfolio'}</span>
+                                                <span style={{ color: 'var(--text-muted)' }}>{item.currentAllocation || 70}%</span>
+                                            </div>
+                                            <div style={{ height: '6px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                <div style={{
+                                                    height: '100%',
+                                                    width: `${item.currentAllocation || 70}%`,
+                                                    backgroundColor: 'var(--success)',
+                                                    borderRadius: '3px'
+                                                }}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div className="text-sm" style={{ marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ fontWeight: 500, color: 'var(--accent-primary)' }}>+ {item.targetPortfolio || 'This Portfolio'}</span>
+                                                <span style={{ color: 'var(--accent-primary)' }}>{item.suggestedSplit || 30}%</span>
+                                            </div>
+                                            <div style={{ height: '6px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                <div style={{
+                                                    height: '100%',
+                                                    width: `${item.suggestedSplit || 30}%`,
+                                                    backgroundColor: 'var(--accent-primary)',
+                                                    borderRadius: '3px'
+                                                }}></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {/* Action Buttons */}
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
+
                                     <button
                                         onClick={() => {
                                             // Confirm: remove from suggestions (in real app, would call API)

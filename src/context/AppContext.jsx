@@ -859,7 +859,7 @@ export const AppProvider = ({ children }) => {
         const poolResource = globalPool.find(g => g.id === bestSharedResource.id);
         if (poolResource) poolResource.used += estimate;
 
-        // Note: this is a shared resource assignment
+        // Note: this is a shared resource assignment - include portfolio details
         gaps.push({
           taskId: task.id,
           taskTitle: task.title,
@@ -867,11 +867,19 @@ export const AppProvider = ({ children }) => {
           requiredTeam: requiredTeam,
           estimate: estimate,
           assignedTo: bestSharedResource.name,
+          resourceId: bestSharedResource.id,
+          primaryPortfolio: getPortfolioName(bestSharedResource.org_id),
+          primaryPortfolioId: bestSharedResource.org_id,
+          targetPortfolio: getPortfolioName(currentOrgId),
+          targetPortfolioId: currentOrgId,
+          currentAllocation: bestSharedResource.allocation || 70, // Default if not set
+          suggestedSplit: 30, // Suggested allocation for target portfolio
           reason: 'Assigned to Shared Resource',
           type: 'shared_assignment'
         });
         return;
       }
+
 
       // TIER 3: No suitable resources - check if cross-portfolio reallocation could help
       // Look for resources in OTHER portfolios with matching skills and available capacity

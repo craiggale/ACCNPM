@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { AlertTriangle, CheckCircle2, Clock, Calendar, ArrowRight, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -134,9 +135,9 @@ const ProjectSummaryDashboard = ({ onFilterHealth }) => {
                     <p style={{ fontSize: '0.875rem', lineHeight: '1.5', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                         Our current forecast predicts <strong style={{ color: 'var(--text-primary)' }}>{bottleneckCount} potential resource bottlenecks</strong> in the next 6 months, primarily affecting '{affectedRole}'.
                     </p>
-                    <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: 500 }}>
+                    <Link to="/resources" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: 500 }}>
                         View Full Capacity Plan <ArrowRight size={16} />
-                    </a>
+                    </Link>
                 </div>
             </div>
 

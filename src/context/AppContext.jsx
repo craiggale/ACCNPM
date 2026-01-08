@@ -1,8 +1,16 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { subWeeks, addWeeks, format, differenceInDays, addDays } from 'date-fns';
 import { useAuth } from './AuthContext';
+import {
+  useProjects, useCreateProject, useUpdateProject, useDeleteProject, useUpdateGateway,
+  useTasks, useCreateTask, useUpdateTask, useDeleteTask,
+  useResources, useCreateResource, useUpdateResource, useDeleteResource,
+  useInitiatives, useCreateInitiative, useUpdateInitiative, useDeleteInitiative,
+  useLinkTaskToInitiative, useUnlinkTaskFromInitiative
+} from '../hooks/useApi';
 
 const AppContext = createContext();
+
 
 const INITIAL_TASK_TEMPLATES = {
   'Website': {
@@ -89,12 +97,41 @@ const INITIAL_GATEWAY_TEMPLATES = {
 export const AppProvider = ({ children }) => {
   // Get auth context for hybrid tenancy
   const authContext = useAuth();
+  const isDemoMode = authContext?.isDemoMode ?? true;
+
+  // ============= REACT QUERY HOOKS (Backend Integration) =============
+  // These hooks fetch from backend API when not in demo mode
+  const projectsQuery = useProjects();
+  const tasksQuery = useTasks();
+  const resourcesQuery = useResources();
+  const initiativesQuery = useInitiatives();
+
+  // Mutation hooks for backend operations
+  const createProjectMutation = useCreateProject();
+  const updateProjectMutation = useUpdateProject();
+  const deleteProjectMutation = useDeleteProject();
+  const updateGatewayMutation = useUpdateGateway();
+
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
+  const deleteTaskMutation = useDeleteTask();
+
+  const createResourceMutation = useCreateResource();
+  const updateResourceMutation = useUpdateResource();
+  const deleteResourceMutation = useDeleteResource();
+
+  const createInitiativeMutation = useCreateInitiative();
+  const updateInitiativeMutation = useUpdateInitiative();
+  const deleteInitiativeMutation = useDeleteInitiative();
+  const linkTaskMutation = useLinkTaskToInitiative();
+  const unlinkTaskMutation = useUnlinkTaskFromInitiative();
 
   // Admin State
   const [teams, setTeams] = useState(['Website', 'Configurator', 'Asset Production']);
   const [markets, setMarkets] = useState(['US', 'UK', 'Germany', 'France', 'Italy', 'Spain', 'Japan', 'Australia', 'Brazil', 'Canada']);
   const [taskTemplates, setTaskTemplates] = useState(INITIAL_TASK_TEMPLATES);
   const [gatewayTemplates, setGatewayTemplates] = useState(INITIAL_GATEWAY_TEMPLATES);
+
 
   // Mock Data - Projects (3 per portfolio = 9 total)
   const [projects, setProjects] = useState([
@@ -484,7 +521,34 @@ export const AppProvider = ({ children }) => {
     return initialTasks;
   });
 
+  // ============= SYNC BACKEND DATA TO STATE =============
+  // When not in demo mode, replace local state with backend data
+  useEffect(() => {
+    if (!isDemoMode && projectsQuery.data && !projectsQuery.isLoading) {
+      setProjects(projectsQuery.data);
+    }
+  }, [isDemoMode, projectsQuery.data, projectsQuery.isLoading]);
+
+  useEffect(() => {
+    if (!isDemoMode && tasksQuery.data && !tasksQuery.isLoading) {
+      setTasks(tasksQuery.data);
+    }
+  }, [isDemoMode, tasksQuery.data, tasksQuery.isLoading]);
+
+  useEffect(() => {
+    if (!isDemoMode && resourcesQuery.data && !resourcesQuery.isLoading) {
+      setResources(resourcesQuery.data);
+    }
+  }, [isDemoMode, resourcesQuery.data, resourcesQuery.isLoading]);
+
+  useEffect(() => {
+    if (!isDemoMode && initiativesQuery.data && !initiativesQuery.isLoading) {
+      setInitiatives(initiativesQuery.data);
+    }
+  }, [isDemoMode, initiativesQuery.data, initiativesQuery.isLoading]);
+
   // Scenario Planner State
+
   const [selectedProjectIds, setSelectedProjectIds] = useState([]);
 
   const toggleProjectSelection = (projectId) => {
@@ -495,7 +559,20 @@ export const AppProvider = ({ children }) => {
     );
   };
 
-  const addProject = (newProject) => {
+  const addProject = async (newProject) => {
+    // If not in demo mode, call backend API
+    if (!isDemoMode) {
+      try {
+        const created = await createProjectMutation.mutateAsync(newProject);
+        // React Query will invalidate and refetch, which syncs to state via useEffect
+        return created;
+      } catch (error) {
+        console.error('Failed to create project:', error);
+        throw error;
+      }
+    }
+
+    // Demo mode: local state only
     const newProjectId = Math.max(...projects.map(p => p.id), 0) + 1;
 
     // Generate Launch Details
@@ -559,7 +636,18 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const deleteProject = (projectId) => {
+
+  const deleteProject = async (projectId) => {
+    if (!isDemoMode) {
+      try {
+        await deleteProjectMutation.mutateAsync(projectId);
+        return;
+      } catch (error) {
+        console.error('Failed to delete project:', error);
+        throw error;
+      }
+    }
+    // Demo mode
     setProjects(prev => prev.filter(p => p.id !== projectId));
     setSelectedProjectIds(prev => prev.filter(id => id !== projectId));
     setTasks(prev => prev.filter(t => t.projectId !== projectId));
@@ -640,30 +728,80 @@ export const AppProvider = ({ children }) => {
   };
 
   // Resource Management
-  const addResource = (newResource) => {
+  const addResource = async (newResource) => {
+    if (!isDemoMode) {
+      try {
+        await createResourceMutation.mutateAsync(newResource);
+        return;
+      } catch (error) {
+        console.error('Failed to create resource:', error);
+        throw error;
+      }
+    }
+    // Demo mode
     setResources(prev => [
       ...prev,
       { ...newResource, id: Math.max(...prev.map(r => r.id), 0) + 1, leave: 0 }
     ]);
   };
 
-  const updateResource = (id, updatedFields) => {
+  const updateResource = async (id, updatedFields) => {
+    if (!isDemoMode) {
+      try {
+        await updateResourceMutation.mutateAsync({ id, data: updatedFields });
+        return;
+      } catch (error) {
+        console.error('Failed to update resource:', error);
+        throw error;
+      }
+    }
+    // Demo mode
     setResources(prev => prev.map(r => r.id === id ? { ...r, ...updatedFields } : r));
   };
 
-  const deleteResource = (id) => {
+  const deleteResource = async (id) => {
+    if (!isDemoMode) {
+      try {
+        await deleteResourceMutation.mutateAsync(id);
+        return;
+      } catch (error) {
+        console.error('Failed to delete resource:', error);
+        throw error;
+      }
+    }
+    // Demo mode
     setResources(prev => prev.filter(r => r.id !== id));
   };
 
   // Initiative Management
-  const addInitiative = (newInitiative) => {
+  const addInitiative = async (newInitiative) => {
+    if (!isDemoMode) {
+      try {
+        await createInitiativeMutation.mutateAsync(newInitiative);
+        return;
+      } catch (error) {
+        console.error('Failed to create initiative:', error);
+        throw error;
+      }
+    }
+    // Demo mode
     setInitiatives(prev => [
       ...prev,
       { ...newInitiative, id: Math.max(...prev.map(i => i.id), 0) + 1, impactedTasks: [] }
     ]);
   };
 
-  const updateInitiative = (id, updatedFields) => {
+  const updateInitiative = async (id, updatedFields) => {
+    if (!isDemoMode) {
+      try {
+        await updateInitiativeMutation.mutateAsync({ id, data: updatedFields });
+        return;
+      } catch (error) {
+        console.error('Failed to update initiative:', error);
+        throw error;
+      }
+    }
+    // Demo mode
     setInitiatives(prev => prev.map(i => i.id === id ? { ...i, ...updatedFields } : i));
   };
 

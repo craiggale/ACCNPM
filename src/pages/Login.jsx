@@ -151,7 +151,7 @@ const FloatingInput = ({
 
 function Login() {
     const navigate = useNavigate();
-    const { login, register } = useAuth();
+    const { login, register, enableDemoMode } = useAuth();
     const [isRegister, setIsRegister] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -486,6 +486,32 @@ function Login() {
                                         ? 'Already have an account? Sign in'
                                         : "Don't have an account? Register"
                                     }
+                                </motion.button>
+                            </motion.div>
+
+                            {/* Try Demo Button */}
+                            <motion.div variants={itemVariants} style={{ marginTop: '1rem', textAlign: 'center' }}>
+                                <motion.button
+                                    onClick={() => {
+                                        enableDemoMode();
+                                        navigate('/');
+                                    }}
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(161, 0, 255, 0.15)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.875rem',
+                                        background: 'transparent',
+                                        border: '1px solid rgba(161, 0, 255, 0.4)',
+                                        borderRadius: '12px',
+                                        color: 'var(--accent-primary)',
+                                        fontSize: '0.95rem',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s',
+                                    }}
+                                >
+                                    ✨ Try Demo Mode
                                 </motion.button>
                             </motion.div>
                         </div>

@@ -50,7 +50,7 @@ const Layout = ({ children }) => {
                             <div style={{ width: '24px', height: '24px', background: 'var(--accent-primary)', borderRadius: '6px' }}></div>
                             ACCN-PM
                         </h1>
-                        <p className="text-sm text-muted" style={{ marginTop: '0.25rem' }}>Intelligent Project Mgmt</p>
+                        <p className="text-sm text-muted" style={{ marginTop: '0.25rem' }}>Intelligent Portfolio Management</p>
                     </div>
                     {/* Theme Toggle */}
                     <button

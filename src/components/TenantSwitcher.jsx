@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Users, ChevronDown, Shield, User, Building2, Star, Loader2 } from 'lucide-react';
+import { Users, ChevronDown, Shield, User, Building2, Star, Loader2, LogOut } from 'lucide-react';
 
 const TenantSwitcher = () => {
     const {
@@ -19,8 +19,10 @@ const TenantSwitcher = () => {
         switchPortfolio,
         userPortfolios,
         allDemoUsers,
-        allDemoOrgs
+        allDemoOrgs,
+        logout
     } = useAuth();
+
 
     const [isOpen, setIsOpen] = useState(false);
     const [isSwitching, setIsSwitching] = useState(false);
@@ -357,18 +359,58 @@ const TenantSwitcher = () => {
                             )}
                         </div>
 
-                        {/* Footer */}
+                        {/* Footer with Logout */}
                         <div style={{
-                            padding: '0.5rem 1rem',
+                            padding: '0.5rem',
                             borderTop: '1px solid var(--bg-tertiary)',
-                            fontSize: '0.7rem',
-                            color: 'var(--text-muted)',
-                            textAlign: 'center'
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem'
                         }}>
-                            {isDemoMode
-                                ? 'Switch users to test tenant isolation & RBAC'
-                                : 'You can switch between your assigned portfolios'
-                            }
+                            <div style={{
+                                fontSize: '0.7rem',
+                                color: 'var(--text-muted)',
+                                textAlign: 'center',
+                                padding: '0 0.5rem'
+                            }}>
+                                {isDemoMode
+                                    ? 'Switch users to test tenant isolation & RBAC'
+                                    : 'You can switch between your assigned portfolios'
+                                }
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    logout();
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    width: '100%',
+                                    padding: '0.5rem 1rem',
+                                    border: '1px solid var(--danger)',
+                                    borderRadius: 'var(--radius-md)',
+                                    backgroundColor: 'transparent',
+                                    color: 'var(--danger)',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 500,
+                                    transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.backgroundColor = 'var(--danger)';
+                                    e.currentTarget.style.color = 'white';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = 'var(--danger)';
+                                }}
+                            >
+                                <LogOut size={14} />
+                                Log Out
+                            </button>
                         </div>
                     </div>
                 </>
@@ -376,6 +418,7 @@ const TenantSwitcher = () => {
         </div>
     );
 };
+
 
 export default TenantSwitcher;
 

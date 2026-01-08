@@ -264,29 +264,109 @@ const ResourceManagement = () => {
                 </div>
             )}
 
-            {/* Shared Resource Assignments */}
+            {/* Shared Resource Assignment Suggestions (Requires Confirmation) */}
             {showGaps && sharedAssignments.length > 0 && (
                 <div className="card" style={{ marginBottom: 'var(--spacing-md)', border: '1px solid var(--accent-primary)', backgroundColor: 'rgba(161, 0, 255, 0.03)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                         <Globe size={18} color="var(--accent-primary)" />
-                        <h4 className="text-lg" style={{ color: 'var(--accent-primary)' }}>Assigned to Shared Resources ({sharedAssignments.length})</h4>
+                        <h4 className="text-lg" style={{ color: 'var(--accent-primary)' }}>Suggested Shared Resource Assignments ({sharedAssignments.length})</h4>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                    <p className="text-sm" style={{ marginBottom: '1rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <AlertCircle size={14} /> Review and confirm each suggested assignment below.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
                         {sharedAssignments.map((item, index) => (
                             <div key={index} style={{ padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(161, 0, 255, 0.2)' }}>
                                 <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{item.taskTitle}</div>
                                 <div className="text-sm text-muted" style={{ marginBottom: '0.5rem' }}>{item.projectName}</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                     <span className="text-sm" style={{ padding: '0.1rem 0.5rem', borderRadius: '1rem', backgroundColor: 'rgba(161, 0, 255, 0.1)', color: 'var(--accent-primary)' }}>
                                         → {item.assignedTo}
                                     </span>
                                     <span className="text-sm text-muted">{item.estimate}h</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                        onClick={() => {
+                                            // Confirm: remove from suggestions (in real app, would call API)
+                                            setSharedAssignments(prev => prev.filter((_, i) => i !== index));
+                                            // Update summary count
+                                            setAssignmentSummary(prev => prev ? {
+                                                ...prev,
+                                                assigned: prev.assigned + 1,
+                                                sharedUsed: prev.sharedUsed - 1
+                                            } : null);
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.375rem 0.75rem',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid var(--success)',
+                                            backgroundColor: 'transparent',
+                                            color: 'var(--success)',
+                                            cursor: 'pointer',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 500,
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.backgroundColor = 'var(--success)';
+                                            e.currentTarget.style.color = 'white';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            e.currentTarget.style.color = 'var(--success)';
+                                        }}
+                                    >
+                                        ✓ Confirm
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            // Reject: remove from suggestions, add back to gaps
+                                            const rejected = sharedAssignments[index];
+                                            setSharedAssignments(prev => prev.filter((_, i) => i !== index));
+                                            setGaps(prev => [...prev, {
+                                                taskTitle: rejected.taskTitle,
+                                                projectName: rejected.projectName,
+                                                requiredTeam: rejected.requiredTeam || 'General',
+                                                reason: 'Assignment rejected'
+                                            }]);
+                                            setAssignmentSummary(prev => prev ? {
+                                                ...prev,
+                                                sharedUsed: prev.sharedUsed - 1,
+                                                gaps: prev.gaps + 1
+                                            } : null);
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.375rem 0.75rem',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid var(--danger)',
+                                            backgroundColor: 'transparent',
+                                            color: 'var(--danger)',
+                                            cursor: 'pointer',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 500,
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.backgroundColor = 'var(--danger)';
+                                            e.currentTarget.style.color = 'white';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            e.currentTarget.style.color = 'var(--danger)';
+                                        }}
+                                    >
+                                        ✕ Reject
+                                    </button>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
             )}
+
 
             {/* Cross-Portfolio Reallocation Suggestions */}
             {showGaps && crossPortfolioSuggestions.length > 0 && (

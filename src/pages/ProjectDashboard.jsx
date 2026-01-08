@@ -652,7 +652,7 @@ const ProjectDashboard = () => {
                             </div>
                         )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr 1fr 80px', padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem', borderBottom: '1px solid var(--bg-tertiary)', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 2fr) minmax(90px, 1fr) minmax(150px, 1.5fr) minmax(140px, 1.2fr) minmax(90px, 1fr) 70px', gap: '0.75rem', padding: '0.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.875rem', borderBottom: '1px solid var(--bg-tertiary)', marginBottom: '0.5rem' }}>
                             <div>Task Name</div>
                             <div>Assignee</div>
                             <div>Status</div>
@@ -665,8 +665,9 @@ const ProjectDashboard = () => {
                             {pTasks.map(task => (
                                 <div key={task.id} style={{
                                     display: 'grid',
-                                    gridTemplateColumns: '2fr 1fr 1fr 1.5fr 1fr 80px',
-                                    padding: '0.75rem 0.5rem',
+                                    gridTemplateColumns: 'minmax(180px, 2fr) minmax(90px, 1fr) minmax(150px, 1.5fr) minmax(140px, 1.2fr) minmax(90px, 1fr) 70px',
+                                    gap: '0.75rem',
+                                    padding: '0.75rem 1rem',
                                     backgroundColor: 'rgba(255, 255, 255, 0.02)',
                                     borderRadius: 'var(--radius-md)',
                                     alignItems: 'center',

@@ -66,3 +66,6 @@ class AutoAssignResult(BaseModel):
     """Result of auto-assignment operation."""
     assigned_count: int
     gaps: list[dict]
+    shared_assignments: list[dict] = []
+    cross_portfolio_suggestions: list[dict] = []
+

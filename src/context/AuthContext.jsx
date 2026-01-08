@@ -117,8 +117,18 @@ export function AuthProvider({ children }) {
      * Returns:
      * - If single org: completes login, returns user
      * - If multiple orgs: returns { requiresOrgSelection: true, organizations: [...] }
+     * - If demo credentials: enables demo mode
      */
     const login = useCallback(async (email, password) => {
+        // Special demo credentials - trigger demo mode
+        if (email === 'demo@demo.com' && password === 'demo') {
+            setIsDemoMode(true);
+            setImpersonatedUserId(DEFAULT_DEMO_USER_ID);
+            setIsAuthenticated(true);
+            setIsLoading(false);
+            return { user: getUserById(DEFAULT_DEMO_USER_ID), isDemoMode: true };
+        }
+
         const response = await authApi.login({ email, password });
 
         // Check if org selection is required

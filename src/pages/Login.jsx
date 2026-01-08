@@ -493,8 +493,8 @@ function Login() {
                             <motion.div variants={itemVariants} style={{ marginTop: '1rem', textAlign: 'center' }}>
                                 <motion.button
                                     onClick={() => {
-                                        enableDemoMode();
-                                        navigate('/');
+                                        setEmail('demo@demo.com');
+                                        setPassword('demo');
                                     }}
                                     whileHover={{ scale: 1.02, backgroundColor: 'rgba(161, 0, 255, 0.15)' }}
                                     whileTap={{ scale: 0.98 }}
@@ -511,8 +511,11 @@ function Login() {
                                         transition: 'all 0.3s',
                                     }}
                                 >
-                                    ✨ Try Demo Mode
+                                    ✨ Use Demo Credentials
                                 </motion.button>
+                                <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+                                    demo@demo.com / demo
+                                </p>
                             </motion.div>
                         </div>
 

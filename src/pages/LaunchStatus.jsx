@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { Rocket, Calendar, CheckCircle2, Clock, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 
@@ -126,9 +127,16 @@ const GatewayItem = ({ gateway, projectId, market }) => {
 };
 
 const LaunchStatus = () => {
-    const { projects } = useApp();
+    const { projects: allProjects } = useApp();
+    const { currentUser, isDemoMode } = useAuth();
     const [selectedLaunchId, setSelectedLaunchId] = useState(null);
     const [expandedProjects, setExpandedProjects] = useState({});
+
+    // Filter projects by current portfolio
+    const projects = useMemo(() => {
+        if (!isDemoMode || !currentUser) return allProjects;
+        return allProjects.filter(p => p.org_id === currentUser.org_id);
+    }, [allProjects, currentUser, isDemoMode]);
 
     const selectedLaunch = useMemo(() => {
         if (!selectedLaunchId) return null;
@@ -148,6 +156,7 @@ const LaunchStatus = () => {
             projectStatus: project.status
         }))
     );
+
 
     const toggleProject = (projectId) => {
         setExpandedProjects(prev => ({

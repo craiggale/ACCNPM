@@ -157,6 +157,30 @@ export const AppProvider = ({ children }) => {
             { name: 'Design Sign-off', status: 'Received', expectedDate: '2026-02-01', receivedDate: '2026-01-28' },
             { name: 'Content Approval', status: 'Pending', expectedDate: '2026-03-15', receivedDate: null }
           ]
+        },
+        {
+          market: 'US',
+          goalLive: '2026-07-15',
+          inputGateways: [
+            { name: 'Legal Review', status: 'Received', expectedDate: '2026-04-01', receivedDate: '2026-03-28' },
+            { name: 'Localization Complete', status: 'In Progress', expectedDate: '2026-05-15', receivedDate: null }
+          ]
+        },
+        {
+          market: 'UK',
+          goalLive: '2026-07-30',
+          inputGateways: [
+            { name: 'Legal Review', status: 'Pending', expectedDate: '2026-05-01', receivedDate: null },
+            { name: 'Localization Complete', status: 'Pending', expectedDate: '2026-06-15', receivedDate: null }
+          ]
+        },
+        {
+          market: 'Germany',
+          goalLive: '2026-08-15',
+          inputGateways: [
+            { name: 'Legal Review', status: 'Pending', expectedDate: '2026-06-01', receivedDate: null },
+            { name: 'Localization Complete', status: 'Pending', expectedDate: '2026-07-15', receivedDate: null }
+          ]
         }
       ]
     },
@@ -181,6 +205,22 @@ export const AppProvider = ({ children }) => {
             { name: '3D Asset Freeze', status: 'Pending', expectedDate: '2026-03-01', receivedDate: null },
             { name: 'Pricing Logic Approval', status: 'Pending', expectedDate: '2026-04-15', receivedDate: null }
           ]
+        },
+        {
+          market: 'US',
+          goalLive: '2026-08-15',
+          inputGateways: [
+            { name: 'EPA Compliance', status: 'In Progress', expectedDate: '2026-05-01', receivedDate: null },
+            { name: 'Dealer Portal Setup', status: 'Pending', expectedDate: '2026-06-15', receivedDate: null }
+          ]
+        },
+        {
+          market: 'Japan',
+          goalLive: '2026-09-30',
+          inputGateways: [
+            { name: 'JIS Compliance', status: 'Pending', expectedDate: '2026-07-01', receivedDate: null },
+            { name: 'Japanese Localization', status: 'Pending', expectedDate: '2026-08-15', receivedDate: null }
+          ]
         }
       ]
     },
@@ -197,7 +237,30 @@ export const AppProvider = ({ children }) => {
       originalEndDate: '2026-09-30',
       type: 'Asset Production',
       scale: 'Medium',
-      launchDetails: []
+      launchDetails: [
+        {
+          market: 'Global',
+          goalLive: '2026-09-30',
+          inputGateways: [
+            { name: 'Creative Brief Approval', status: 'Received', expectedDate: '2026-04-15', receivedDate: '2026-04-10' },
+            { name: 'Media Buy Confirmation', status: 'Pending', expectedDate: '2026-06-01', receivedDate: null }
+          ]
+        },
+        {
+          market: 'US',
+          goalLive: '2026-10-15',
+          inputGateways: [
+            { name: 'FTC Compliance', status: 'Pending', expectedDate: '2026-07-01', receivedDate: null }
+          ]
+        },
+        {
+          market: 'UK',
+          goalLive: '2026-10-30',
+          inputGateways: [
+            { name: 'ASA Compliance', status: 'Pending', expectedDate: '2026-08-01', receivedDate: null }
+          ]
+        }
+      ]
     },
 
     // ========== NEXGEN HEALTH (Pharmaceutical) ==========

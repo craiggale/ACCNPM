@@ -16,32 +16,43 @@ const ResourceManagement = () => {
         return allResources.filter(r => r.org_id === currentUser.org_id);
     }, [allResources, currentUser, isDemoMode]);
 
+    // State for explicit secondary portfolio assignments (only populated through user action)
+    const [secondaryAssignments, setSecondaryAssignments] = useState({});
+    // Format: { [userId]: [{ org_id: 'org-xxx', allocation: 30 }, ...] }
+
     // Global resource pool: all users with their portfolio allocations (for demo mode)
+    // By default, all resources are 100% allocated to their primary portfolio
+    // Secondary portfolios only appear when explicitly assigned via user confirmation
     const globalResourcePool = useMemo(() => {
         if (!isDemoMode) return [];
 
-        // Group users by their assignments
         return allDemoUsers.map(user => {
             const primaryOrg = allDemoOrgs.find(o => o.id === user.org_id);
-            // Simulate allocation percentages
-            const allocation = user.id.includes('sarah') || user.id.includes('emily') ? 100 :
-                user.id.includes('mike') ? 70 : 50;
-            const otherPortfolios = allocation < 100 ?
-                allDemoOrgs.filter(o => o.id !== user.org_id).slice(0, 1) : [];
+
+            // Get any explicitly assigned secondary portfolios
+            const userSecondaryAssignments = secondaryAssignments[user.id] || [];
+            const secondaryAllocation = userSecondaryAssignments.reduce((sum, a) => sum + a.allocation, 0);
+
+            // Primary allocation is 100% minus any secondary assignments
+            const primaryAllocation = 100 - secondaryAllocation;
+
+            // Build other portfolios list from secondary assignments
+            const otherPortfolios = userSecondaryAssignments.map(assignment => {
+                const org = allDemoOrgs.find(o => o.id === assignment.org_id);
+                return org ? { ...org, allocation: assignment.allocation } : null;
+            }).filter(Boolean);
 
             return {
                 ...user,
                 primaryPortfolio: primaryOrg,
-                allocation: allocation,
-                otherPortfolios: otherPortfolios.map(o => ({
-                    ...o,
-                    allocation: 100 - allocation
-                })),
+                allocation: primaryAllocation,
+                otherPortfolios: otherPortfolios,
                 capacity_hours: 160,
-                is_available: allocation < 100
+                is_available: primaryAllocation < 100 // Available if not 100% on primary
             };
         });
-    }, [isDemoMode, allDemoUsers, allDemoOrgs]);
+    }, [isDemoMode, allDemoUsers, allDemoOrgs, secondaryAssignments]);
+
 
     const tasks = useMemo(() => {
         if (!isDemoMode || !currentUser) return allTasks;
@@ -115,6 +126,29 @@ const ResourceManagement = () => {
             leave: parseInt(editForm.leave) || 0
         });
         setEditingId(null);
+    };
+
+    // Confirm cross-portfolio assignment (adds secondary portfolio to a user)
+    const confirmCrossPortfolioAssignment = (userId, targetOrgId, allocationPercent = 30) => {
+        setSecondaryAssignments(prev => {
+            const existing = prev[userId] || [];
+            // Check if already assigned to this org
+            if (existing.some(a => a.org_id === targetOrgId)) {
+                return prev; // Already assigned
+            }
+            return {
+                ...prev,
+                [userId]: [...existing, { org_id: targetOrgId, allocation: allocationPercent }]
+            };
+        });
+    };
+
+    // Remove cross-portfolio assignment
+    const removeCrossPortfolioAssignment = (userId, targetOrgId) => {
+        setSecondaryAssignments(prev => ({
+            ...prev,
+            [userId]: (prev[userId] || []).filter(a => a.org_id !== targetOrgId)
+        }));
     };
 
     const getUtilizationColor = (used, capacity) => {
@@ -261,8 +295,11 @@ const ResourceManagement = () => {
                         <Globe size={18} color="#10B981" />
                         <h4 className="text-lg" style={{ color: '#10B981' }}>Cross-Portfolio Reallocation Suggestions ({crossPortfolioSuggestions.length})</h4>
                     </div>
-                    <p className="text-sm text-muted" style={{ marginBottom: '1rem' }}>
-                        These tasks could be filled by reallocating resources from other portfolios.
+                    <p className="text-sm text-muted" style={{ marginBottom: '0.5rem' }}>
+                        These tasks could be filled by assigning resources from other portfolios.
+                    </p>
+                    <p className="text-sm" style={{ marginBottom: '1rem', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <AlertCircle size={14} /> Requires confirmation — resources will be assigned to this portfolio as secondary.
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {crossPortfolioSuggestions.map((suggestion, index) => (
@@ -274,19 +311,56 @@ const ResourceManagement = () => {
                                     </div>
                                 </div>
                                 <div className="text-sm" style={{ marginBottom: '0.5rem', fontWeight: 500 }}>Available candidates from other portfolios:</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {suggestion.candidates.map((candidate, i) => (
                                         <div key={i} style={{
-                                            padding: '0.5rem 0.75rem',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '0.75rem',
                                             backgroundColor: 'rgba(16, 185, 129, 0.1)',
                                             borderRadius: 'var(--radius-sm)',
-                                            border: '1px solid rgba(16, 185, 129, 0.2)',
-                                            fontSize: '0.875rem'
+                                            border: '1px solid rgba(16, 185, 129, 0.2)'
                                         }}>
-                                            <div style={{ fontWeight: 500, color: '#10B981' }}>{candidate.name}</div>
-                                            <div className="text-sm text-muted">
-                                                {candidate.portfolioName} • {candidate.currentAllocation}% allocated • {candidate.availableHours}h free
+                                            <div>
+                                                <div style={{ fontWeight: 500, color: '#10B981', fontSize: '0.875rem' }}>{candidate.name}</div>
+                                                <div className="text-sm text-muted">
+                                                    {candidate.portfolioName} • {candidate.currentAllocation}% allocated • {candidate.availableHours}h free
+                                                </div>
                                             </div>
+                                            <button
+                                                onClick={() => {
+                                                    confirmCrossPortfolioAssignment(candidate.id, currentUser.org_id, 30);
+                                                    // Optional: remove this suggestion after confirming
+                                                    setCrossPortfolioSuggestions(prev =>
+                                                        prev.map((s, idx) => idx === index
+                                                            ? { ...s, candidates: s.candidates.filter((_, ci) => ci !== i) }
+                                                            : s
+                                                        ).filter(s => s.candidates.length > 0)
+                                                    );
+                                                }}
+                                                style={{
+                                                    padding: '0.375rem 0.75rem',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    border: '1px solid #10B981',
+                                                    backgroundColor: 'transparent',
+                                                    color: '#10B981',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 500,
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseEnter={e => {
+                                                    e.currentTarget.style.backgroundColor = '#10B981';
+                                                    e.currentTarget.style.color = 'white';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                    e.currentTarget.style.color = '#10B981';
+                                                }}
+                                            >
+                                                Assign to Portfolio
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -295,6 +369,7 @@ const ResourceManagement = () => {
                     </div>
                 </div>
             )}
+
 
             {/* Gaps / Unassigned Tasks */}
             {showGaps && gaps.length > 0 && (

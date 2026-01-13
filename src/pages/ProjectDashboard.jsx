@@ -271,8 +271,22 @@ const ProjectDashboard = () => {
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
                                     <div className="text-2xl" style={{ color: 'var(--accent-primary)' }}>{progress}%</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        {totalActualHours}h / {totalExpectedHours}h burned
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                                        <span>{totalActualHours}h / {totalExpectedHours}h burned</span>
+                                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '4px' }}>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', opacity: 0.8, letterSpacing: '0.025em' }}>Internal</div>
+                                                <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>£{project.financials?.internal?.toLocaleString() || '0'}</div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', opacity: 0.8, letterSpacing: '0.025em' }}>Client</div>
+                                                <div style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>£{project.financials?.client?.toLocaleString() || '0'}</div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: '0.6rem', textTransform: 'uppercase', opacity: 0.8, letterSpacing: '0.025em' }}>Margin</div>
+                                                <div style={{ color: 'var(--success)', fontWeight: 600 }}>{project.financials?.margin > 0 ? '+' : ''}{project.financials?.margin}%</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -366,6 +380,7 @@ const ProjectDashboard = () => {
                     <div>PM</div>
                     <div>Dates</div>
                     <div>Progress</div>
+                    <div>Financials</div>
                     <div>Actions</div>
                 </div>
 
@@ -391,7 +406,7 @@ const ProjectDashboard = () => {
                                 onClick={() => handleProjectClick(project)}
                                 style={{
                                     display: 'grid',
-                                    gridTemplateColumns: '2fr 0.8fr 1fr 1fr 1.5fr 1fr 100px',
+                                    gridTemplateColumns: '2fr 0.8fr 1fr 1fr 1.5fr 1fr 1fr 100px',
                                     padding: '0.75rem 1rem',
                                     alignItems: 'center',
                                     borderBottom: '1px solid var(--bg-tertiary)',
@@ -437,6 +452,12 @@ const ProjectDashboard = () => {
                                         }} />
                                     </div>
                                     <span className="text-sm" style={{ minWidth: '40px', color: '#A100FF' }}>{progress}%</span>
+                                </div>
+                                <div className="text-sm font-medium" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <div style={{ color: 'var(--accent-primary)' }}>£{project.financials?.client?.toLocaleString() || '0'}</div>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                                        Int: £{project.financials?.internal?.toLocaleString() || '0'} | <span style={{ color: 'var(--success)' }}>{project.financials?.margin > 0 ? '+' : ''}{project.financials?.margin}%</span>
+                                    </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                                     <button
@@ -498,7 +519,7 @@ const ProjectDashboard = () => {
                                 cursor: 'pointer'
                             }}
                         >
-                            {p.name}
+                            <span style={{ fontWeight: 600, marginRight: '0.5rem' }}>{p.code}</span>{p.name}
                         </button>
                     ))}
                 </div>
@@ -532,7 +553,7 @@ const ProjectDashboard = () => {
                 <div className="card" style={{ marginBottom: 'var(--spacing-xl)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                            <h2 className="text-2xl">{activeProject.name}</h2>
+                            <h2 className="text-2xl"><span style={{ color: 'var(--accent-primary)', marginRight: '0.5rem' }}>{activeProject.code}</span>{activeProject.name}</h2>
                             <p className="text-muted">{activeProject.type} • {activeProject.startDate} to {activeProject.endDate}</p>
                         </div>
                         <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
@@ -1176,32 +1197,98 @@ const ProjectDashboard = () => {
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                     backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
                 }}>
-                    <div className="card" style={{ width: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
+                    <div className="card" style={{ width: '700px', maxHeight: '80vh', overflowY: 'auto' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <h3 className="text-xl">Market Status: {selectedMarketTask.title}</h3>
                             <button className="btn-ghost" onClick={() => setShowMarketStatusModal(false)}><X size={20} /></button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {selectedMarketTask.marketStatus && Object.entries(selectedMarketTask.marketStatus).map(([market, status]) => (
-                                <div key={market} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)' }}>
-                                    <span>{market}</span>
-                                    <select
-                                        value={status}
-                                        onChange={(e) => {
-                                            const newStatus = e.target.value;
-                                            const updatedMarketStatus = { ...selectedMarketTask.marketStatus, [market]: newStatus };
-                                            updateTask(selectedMarketTask.id, { marketStatus: updatedMarketStatus });
-                                            setSelectedMarketTask({ ...selectedMarketTask, marketStatus: updatedMarketStatus });
-                                        }}
-                                        style={{ padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                    >
-                                        <option value="Planning">Planning</option>
-                                        <option value="In Progress">In Progress</option>
-                                        <option value="Completed">Completed</option>
-                                        <option value="Delayed">Delayed</option>
-                                    </select>
-                                </div>
-                            ))}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {selectedMarketTask.marketStatus && Object.entries(selectedMarketTask.marketStatus).map(([market, data]) => {
+                                // Support both old format (string status) and new format (object with status, expectedDate, actualDate)
+                                const marketData = typeof data === 'string'
+                                    ? { status: data, expectedDate: '', actualDate: '' }
+                                    : data;
+
+                                const handleMarketChange = (field, value) => {
+                                    const currentData = typeof data === 'string'
+                                        ? { status: data, expectedDate: '', actualDate: '' }
+                                        : { ...data };
+                                    currentData[field] = value;
+                                    const updatedMarketStatus = { ...selectedMarketTask.marketStatus, [market]: currentData };
+                                    updateTask(selectedMarketTask.id, { marketStatus: updatedMarketStatus });
+                                    setSelectedMarketTask({ ...selectedMarketTask, marketStatus: updatedMarketStatus });
+                                };
+
+                                const isLate = marketData.expectedDate && marketData.actualDate &&
+                                    new Date(marketData.actualDate) > new Date(marketData.expectedDate);
+                                const isOnTime = marketData.expectedDate && marketData.actualDate &&
+                                    new Date(marketData.actualDate) <= new Date(marketData.expectedDate);
+
+                                return (
+                                    <div key={market} style={{
+                                        padding: '0.75rem',
+                                        backgroundColor: 'var(--bg-secondary)',
+                                        borderRadius: 'var(--radius-md)',
+                                        borderLeft: `4px solid ${marketData.status === 'Completed' ? 'var(--success)' : marketData.status === 'Delayed' ? 'var(--danger)' : marketData.status === 'In Progress' ? 'var(--accent-primary)' : 'var(--bg-tertiary)'}`
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <span style={{ fontWeight: 600 }}>{market}</span>
+                                            <select
+                                                value={marketData.status}
+                                                onChange={(e) => handleMarketChange('status', e.target.value)}
+                                                style={{ padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                            >
+                                                <option value="Planning">Planning</option>
+                                                <option value="In Progress">In Progress</option>
+                                                <option value="Completed">Completed</option>
+                                                <option value="Delayed">Delayed</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                            <div>
+                                                <label className="text-xs text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Expected Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={marketData.expectedDate || ''}
+                                                    onChange={(e) => handleMarketChange('expectedDate', e.target.value)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '0.35rem 0.5rem',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        border: '1px solid var(--bg-tertiary)',
+                                                        backgroundColor: 'var(--bg-primary)',
+                                                        color: 'var(--text-primary)',
+                                                        fontSize: '0.875rem'
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Actual Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={marketData.actualDate || ''}
+                                                    onChange={(e) => handleMarketChange('actualDate', e.target.value)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '0.35rem 0.5rem',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        border: '1px solid var(--bg-tertiary)',
+                                                        backgroundColor: 'var(--bg-primary)',
+                                                        color: 'var(--text-primary)',
+                                                        fontSize: '0.875rem'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        {marketData.expectedDate && marketData.actualDate && (
+                                            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>
+                                                {isOnTime && <span style={{ color: 'var(--success)' }}>✓ Completed on time</span>}
+                                                {isLate && <span style={{ color: 'var(--danger)' }}>⚠ Completed {Math.round((new Date(marketData.actualDate) - new Date(marketData.expectedDate)) / (1000 * 60 * 60 * 24))} days late</span>}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                             {(!selectedMarketTask.marketStatus || Object.keys(selectedMarketTask.marketStatus).length === 0) && (
                                 <div className="text-muted">No markets defined for this task.</div>
                             )}

@@ -3,18 +3,47 @@ import { useApp } from '../context/AppContext';
 import { Plus } from 'lucide-react';
 import { subWeeks, format } from 'date-fns';
 
-const NewProjectPane = ({ onClose }) => {
+const NewProjectPane = ({ onClose, onAdd, planningMode = 'Standard' }) => {
     const { addProject, teams, markets } = useApp();
-    const [newProject, setNewProject] = useState({ name: '', startDate: '', endDate: '', type: 'Website', scale: 'Medium', markets: [] });
+    const [newProject, setNewProject] = useState({
+        name: '',
+        startDate: '',
+        endDate: '',
+        type: 'Website',
+        scale: 'Medium',
+        markets: [],
+        totalEffort: 960 // Default for Medium
+    });
 
     const handleAddProject = (e) => {
         e.preventDefault();
+
+        // Resource First Logic
+        if (planningMode === 'ResourceFirst') {
+            const projectData = {
+                ...newProject,
+                isResourceDriven: true,
+                startDate: newProject.startDate || format(new Date(), 'yyyy-MM-dd'), // Default to today/selected
+                endDate: '', // Will be calculated
+                status: 'Draft'
+            };
+            if (onAdd) onAdd(projectData);
+            else addProject(projectData); // Should unlikely happen in live, but fallback
+            onClose();
+            return;
+        }
+
+        // Standard Logic
         if (newProject.name && newProject.endDate) {
             const end = new Date(newProject.endDate);
-            const start = subWeeks(end, 20);
+            const start = subWeeks(end, 20); // Simple 20 week default logic
             const calculatedStartDate = format(start, 'yyyy-MM-dd');
 
-            addProject({ ...newProject, startDate: calculatedStartDate });
+            const projectData = { ...newProject, startDate: calculatedStartDate };
+
+            if (onAdd) onAdd(projectData);
+            else addProject(projectData);
+
             setNewProject({ name: '', startDate: '', endDate: '', type: 'Website', scale: 'Medium', markets: [] });
             onClose();
         }
@@ -31,16 +60,30 @@ const NewProjectPane = ({ onClose }) => {
                     style={{ padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                     required
                 />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label className="text-sm text-muted">Go Live Date</label>
-                    <input
-                        type="date"
-                        value={newProject.endDate}
-                        onChange={e => setNewProject({ ...newProject, endDate: e.target.value })}
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                        required
-                    />
-                </div>
+                {planningMode === 'Standard' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <label className="text-sm text-muted">Go Live Date</label>
+                        <input
+                            type="date"
+                            value={newProject.endDate}
+                            onChange={e => setNewProject({ ...newProject, endDate: e.target.value })}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                            required
+                        />
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <label className="text-sm text-muted">Start Date (Earliest)</label>
+                        <input
+                            type="date"
+                            value={newProject.startDate}
+                            onChange={e => setNewProject({ ...newProject, startDate: e.target.value })}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                            required
+                        />
+                        <div className="text-xs text-muted">End date will be calculated based on capacity.</div>
+                    </div>
+                )}
 
                 {/* Team / Type Selection */}
                 <select
@@ -54,26 +97,37 @@ const NewProjectPane = ({ onClose }) => {
                 </select>
 
                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-                    {['Small', 'Medium', 'Large'].map(scale => (
-                        <button
-                            key={scale}
-                            type="button"
-                            onClick={() => setNewProject({ ...newProject, scale })}
-                            style={{
-                                flex: 1,
-                                padding: '0.25rem',
-                                borderRadius: 'var(--radius-sm)',
-                                border: `1px solid ${newProject.scale === scale ? 'var(--accent-primary)' : 'var(--bg-tertiary)'}`,
-                                backgroundColor: newProject.scale === scale ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                color: newProject.scale === scale ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                fontSize: '0.75rem',
-                                fontWeight: 500
-                            }}
-                        >
-                            {scale}
-                        </button>
-                    ))}
+                    {['Small', 'Medium', 'Large'].map(scale => {
+                        const effortLabel = planningMode === 'ResourceFirst'
+                            ? (scale === 'Small' ? '480h' : scale === 'Medium' ? '960h' : '1920h')
+                            : scale;
+
+                        return (
+                            <button
+                                key={scale}
+                                type="button"
+                                onClick={() => setNewProject({
+                                    ...newProject,
+                                    scale,
+                                    totalEffort: scale === 'Small' ? 480 : scale === 'Medium' ? 960 : 1920
+                                })}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.25rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: `1px solid ${newProject.scale === scale ? 'var(--accent-primary)' : 'var(--bg-tertiary)'}`,
+                                    backgroundColor: newProject.scale === scale ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                    color: newProject.scale === scale ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500
+                                }}
+                            >
+                                {effortLabel}
+                            </button>
+                        );
+                    })}
                 </div>
+                {planningMode === 'ResourceFirst' && <div className="text-xs text-muted" style={{ marginTop: '-8px', textAlign: 'right' }}>Total Effort</div>}
 
                 {/* Market Selection */}
                 <div style={{ marginBottom: 'var(--spacing-sm)' }}>

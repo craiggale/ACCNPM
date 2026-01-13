@@ -26,18 +26,20 @@ export const queryKeys = {
 };
 
 // Projects hooks
-export function useProjects() {
+export function useProjects(options = {}) {
     return useQuery({
         queryKey: queryKeys.projects,
         queryFn: projectsApi.list,
+        ...options
     });
 }
 
-export function useProject(id) {
+export function useProject(id, options = {}) {
     return useQuery({
         queryKey: queryKeys.project(id),
         queryFn: () => projectsApi.get(id),
         enabled: !!id,
+        ...options
     });
 }
 
@@ -86,10 +88,11 @@ export function useUpdateGateway() {
 }
 
 // Tasks hooks
-export function useTasks(projectId = null) {
+export function useTasks(projectId = null, options = {}) {
     return useQuery({
         queryKey: projectId ? queryKeys.tasksByProject(projectId) : queryKeys.tasks,
         queryFn: () => tasksApi.list(projectId),
+        ...options
     });
 }
 
@@ -135,10 +138,11 @@ export function useAutoAssignTasks() {
 }
 
 // Resources hooks
-export function useResources() {
+export function useResources(options = {}) {
     return useQuery({
         queryKey: queryKeys.resources,
         queryFn: resourcesApi.list,
+        ...options
     });
 }
 
@@ -173,18 +177,20 @@ export function useDeleteResource() {
 }
 
 // Initiatives hooks
-export function useInitiatives() {
+export function useInitiatives(options = {}) {
     return useQuery({
         queryKey: queryKeys.initiatives,
         queryFn: initiativesApi.list,
+        ...options
     });
 }
 
-export function useInitiative(id) {
+export function useInitiative(id, options = {}) {
     return useQuery({
         queryKey: queryKeys.initiative(id),
         queryFn: () => initiativesApi.get(id),
         enabled: !!id,
+        ...options
     });
 }
 
@@ -244,23 +250,26 @@ export function useUnlinkTaskFromInitiative() {
 }
 
 // KVI hooks
-export function usePortfolioHealth() {
+export function usePortfolioHealth(options = {}) {
     return useQuery({
         queryKey: queryKeys.portfolioHealth,
         queryFn: kviApi.getPortfolioHealth,
+        ...options
     });
 }
 
-export function useInitiativeValue() {
+export function useInitiativeValue(options = {}) {
     return useQuery({
         queryKey: queryKeys.initiativeValue,
         queryFn: kviApi.getInitiativeValue,
+        ...options
     });
 }
 
-export function useScheduleVariance() {
+export function useScheduleVariance(options = {}) {
     return useQuery({
         queryKey: queryKeys.scheduleVariance,
         queryFn: kviApi.getScheduleVariance,
+        ...options
     });
 }

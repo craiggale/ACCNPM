@@ -91,7 +91,7 @@ const ScenarioTabs = ({
                                         <tbody>
                                             {tab.candidates.map(p => (
                                                 <tr key={p.id} style={{ borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                                    <td style={{ padding: '8px', fontWeight: 500 }}>{p.name}</td>
+                                                    <td style={{ padding: '8px', fontWeight: 500 }}><span style={{ color: 'var(--accent-primary)' }}>{p.code}</span> {p.name}</td>
                                                     <td style={{ padding: '8px' }}>
                                                         <span style={{
                                                             padding: '2px 6px', borderRadius: '4px',

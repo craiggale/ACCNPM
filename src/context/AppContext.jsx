@@ -101,10 +101,10 @@ export const AppProvider = ({ children }) => {
 
   // ============= REACT QUERY HOOKS (Backend Integration) =============
   // These hooks fetch from backend API when not in demo mode
-  const projectsQuery = useProjects();
-  const tasksQuery = useTasks();
-  const resourcesQuery = useResources();
-  const initiativesQuery = useInitiatives();
+  const projectsQuery = useProjects({ enabled: !isDemoMode });
+  const tasksQuery = useTasks(null, { enabled: !isDemoMode });
+  const resourcesQuery = useResources({ enabled: !isDemoMode });
+  const initiativesQuery = useInitiatives({ enabled: !isDemoMode });
 
   // Mutation hooks for backend operations
   const createProjectMutation = useCreateProject();
@@ -139,6 +139,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 1,
       name: 'Falcon GT Website',
+      code: 'FGT-001',
       status: 'Active',
       health: 'On Track',
       pm: 'Sarah Jenkins',
@@ -187,6 +188,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 2,
       name: 'Eagle SUV Configurator',
+      code: 'ESC-002',
       status: 'Active',
       health: 'At Risk',
       pm: 'Mike Ross',
@@ -227,6 +229,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 3,
       name: 'Phoenix EV Campaign',
+      code: 'PEC-003',
       status: 'Planning',
       health: 'On Track',
       pm: 'James Wilson',
@@ -237,6 +240,8 @@ export const AppProvider = ({ children }) => {
       originalEndDate: '2026-09-30',
       type: 'Asset Production',
       scale: 'Medium',
+      isResourceDriven: true,
+      totalEffort: 480, // With spare capacity, can complete in ~3 months instead of 6
       launchDetails: [
         {
           market: 'Global',
@@ -267,6 +272,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 4,
       name: 'Patient Portal Redesign',
+      code: 'PPR-004',
       status: 'Active',
       health: 'On Track',
       pm: 'Emily Chen',
@@ -291,6 +297,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 5,
       name: 'Sales Rep CRM Dashboard',
+      code: 'SRC-005',
       status: 'Active',
       health: 'Late',
       pm: 'David Lee',
@@ -318,6 +325,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 6,
       name: 'Product Launch Assets',
+      code: 'PLA-006',
       status: 'Proposed',
       health: 'On Track',
       pm: 'Anna Garcia',
@@ -328,6 +336,8 @@ export const AppProvider = ({ children }) => {
       originalEndDate: '2026-10-31',
       type: 'Asset Production',
       scale: 'Large',
+      isResourceDriven: true,
+      totalEffort: 1920, // Large effort - will need significant capacity
       launchDetails: []
     },
 
@@ -335,6 +345,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 7,
       name: 'Analytics Dashboard v2',
+      code: 'ADV-007',
       status: 'Active',
       health: 'On Track',
       pm: 'Robert Taylor',
@@ -359,6 +370,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 8,
       name: 'Developer Platform',
+      code: 'DEV-008',
       status: 'Active',
       health: 'At Risk',
       pm: 'Lisa Wong',
@@ -383,6 +395,7 @@ export const AppProvider = ({ children }) => {
     {
       id: 9,
       name: 'Brand Campaign 2026',
+      code: 'BC-009',
       status: 'Planning',
       health: 'On Track',
       pm: 'Tom Baker',
@@ -401,19 +414,19 @@ export const AppProvider = ({ children }) => {
   // Mock Data - Resources (3 per portfolio = 9 total)
   const [resources, setResources] = useState([
     // Falcon Motors Team
-    { id: 1, name: 'Sarah Jenkins', role: 'Frontend Lead', team: 'Website', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-sarah' },
-    { id: 2, name: 'Mike Ross', role: '3D Artist', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-mike' },
-    { id: 3, name: 'James Wilson', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-james' },
+    { id: 1, name: 'Sarah Jenkins', role: 'Frontend Lead', team: 'Website', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-sarah', internalRate: 120, clientRate: 150 },
+    { id: 2, name: 'Mike Ross', role: '3D Artist', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-mike', internalRate: 95, clientRate: 120 },
+    { id: 3, name: 'James Wilson', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-james', internalRate: 85, clientRate: 110 },
 
     // NexGen Health Team
-    { id: 4, name: 'Emily Chen', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-emily' },
-    { id: 5, name: 'David Lee', role: 'Product Owner', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-david' },
-    { id: 6, name: 'Anna Garcia', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-anna' },
+    { id: 4, name: 'Emily Chen', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-emily', internalRate: 110, clientRate: 140 },
+    { id: 5, name: 'David Lee', role: 'Product Owner', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-david', internalRate: 130, clientRate: 165 },
+    { id: 6, name: 'Anna Garcia', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-anna', internalRate: 85, clientRate: 110 },
 
     // Vertex Tech Team
-    { id: 7, name: 'Robert Taylor', role: 'Manager', team: 'Website', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-robert' },
-    { id: 8, name: 'Lisa Wong', role: 'Developer', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-lisa' },
-    { id: 9, name: 'Tom Baker', role: 'QA', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-tom' },
+    { id: 7, name: 'Robert Taylor', role: 'Manager', team: 'Website', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-robert', internalRate: 150, clientRate: 190 },
+    { id: 8, name: 'Lisa Wong', role: 'Developer', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-lisa', internalRate: 105, clientRate: 135 },
+    { id: 9, name: 'Tom Baker', role: 'QA', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-tom', internalRate: 80, clientRate: 105 },
   ]);
 
 
@@ -465,6 +478,13 @@ export const AppProvider = ({ children }) => {
     }
   ]);
 
+  // Leave Requests state for My Account
+  const [leaveRequests, setLeaveRequests] = useState([]);
+
+  const submitLeaveRequest = (request) => {
+    setLeaveRequests(prev => [...prev, { ...request, id: `leave-${Date.now()}` }]);
+  };
+
 
   // Mock Data - Tasks (for Track the Present)
   const [tasks, setTasks] = useState(() => {
@@ -472,94 +492,160 @@ export const AppProvider = ({ children }) => {
     projects.forEach(project => {
       const template = INITIAL_TASK_TEMPLATES[project.type]?.[project.scale];
       if (template) {
-        const totalDays = differenceInDays(new Date(project.endDate), new Date(project.startDate));
-        const daysPerTask = Math.floor(totalDays / template.length);
-
-        template.forEach((t, index) => {
-          const taskStart = addDays(new Date(project.startDate), index * daysPerTask);
-          const taskEnd = index === template.length - 1 ? new Date(project.endDate) : addDays(taskStart, daysPerTask);
-
-          let status = 'Planning';
-          let actual = 0;
-          let valueSaved = null;
-          let linkedInitiativeId = null;
-
-          if (project.status === 'Completed') {
-            status = 'Completed';
-            actual = t.estimate;
-
-            // Adjust actuals for historic projects to reflect value savings
-            // Falcon GT (2025) - ID 6
-            if (project.id === 6) {
-              if (t.title === 'Frontend Development') { actual = 80; valueSaved = 40; linkedInitiativeId = 1; } // Saved 40h (Auto-Bot)
-              if (t.title === 'QA') { actual = 15; valueSaved = 25; linkedInitiativeId = 1; } // Saved 25h (Auto-Bot)
-              if (t.title === 'UI Design') { actual = 55; valueSaved = 5000; linkedInitiativeId = 2; } // Saved 5000 (Asset Reuse)
-              if (t.title === 'CMS Integration') { actual = 70; valueSaved = 150000; linkedInitiativeId = 3; } // Saved 150k Revenue
+        // Custom logic for Project 2 (Eagle SUV) to simulate specific slip
+        if (project.id === 2) {
+          // Update Gateway Status to reflect the cause
+          if (project.launchDetails) {
+            const globalLaunch = project.launchDetails.find(d => d.market === 'Global');
+            if (globalLaunch && globalLaunch.inputGateways) {
+              const assetGateway = globalLaunch.inputGateways.find(g => g.name === '3D Asset Freeze');
+              if (assetGateway) {
+                assetGateway.status = 'Late';
+              }
             }
-            // Eagle SUV (2025) - ID 8
-            if (project.id === 8) {
-              if (t.title === 'UI Implementation') { actual = 40; valueSaved = 40; linkedInitiativeId = 1; } // Saved 40h (Auto-Bot)
-              if (t.title === 'Integration Testing') { actual = 15; valueSaved = 25; linkedInitiativeId = 1; } // Saved 25h (Auto-Bot)
-              if (t.title === '3D Asset Prep') { actual = 60; valueSaved = 12000; linkedInitiativeId = 2; } // Saved 12k (Asset Reuse)
-            }
-            // Hawk Sedan (2025) - ID 12
-            if (project.id === 12) {
-              if (t.title === 'Frontend Dev') { actual = 5; valueSaved = 30; linkedInitiativeId = 1; } // Saved 30h (Auto-Bot)
+          }
+
+          const originalEnd = new Date(project.originalEndDate); // July 15
+          const currentEnd = new Date(project.endDate); // July 31
+          const varianceDays = differenceInDays(currentEnd, originalEnd); // ~16 days
+
+          // Calculate baseline pace based on ORIGINAL timeframe
+          const baselineTotalDays = differenceInDays(originalEnd, new Date(project.startDate));
+          const baselineDaysPerTask = Math.floor(baselineTotalDays / template.length);
+
+          let currentOffset = 0;
+
+          template.forEach((t, index) => {
+            const taskStart = addDays(new Date(project.startDate), (index * baselineDaysPerTask) + currentOffset);
+            let taskEnd = addDays(taskStart, baselineDaysPerTask);
+
+            let status = 'Planning';
+            let actual = 0;
+            let note = null;
+
+            // Introduce the slip in the first task
+            if (index === 0) {
+              // Task 1 caused the delay
+              taskEnd = addDays(taskEnd, varianceDays); // Extend duration
+              currentOffset += varianceDays; // Shift subsequent tasks
+
+              status = 'Planning'; // Future task
+              actual = 0;
+              note = 'Delayed due to complex asset iterations';
+            } else if (index === 1) {
+              status = 'Planning';
+              actual = 0;
+            } else if (index === 2) {
+              status = 'Planning';
+              actual = 0;
             }
 
-          } else if (project.status === 'Active') {
-            if (index < 2) {
+            initialTasks.push({
+              id: Date.now() + project.id * 100 + index,
+              projectId: project.id,
+              title: t.title,
+              status: status,
+              assignee: null,
+              estimate: t.estimate,
+              actual: actual,
+              startDate: format(taskStart, 'yyyy-MM-dd'),
+              endDate: format(taskEnd, 'yyyy-MM-dd'), // This will reflect the slip
+              predecessorId: index > 0 ? (Date.now() + project.id * 100 + index - 1) : null,
+              isMarketSpecific: ['Deployment', 'Global Rollout', 'Regional Localization', 'Multi-Market Rollout', 'Launch'].includes(t.title),
+              marketStatus: null,
+              gatewayDependency: t.gatewayDependency,
+              note: note
+            });
+          });
+
+        } else {
+          // Standard logic for other projects
+          const totalDays = differenceInDays(new Date(project.endDate), new Date(project.startDate));
+          const daysPerTask = Math.floor(totalDays / template.length);
+
+          template.forEach((t, index) => {
+            const taskStart = addDays(new Date(project.startDate), index * daysPerTask);
+            const taskEnd = index === template.length - 1 ? new Date(project.endDate) : addDays(taskStart, daysPerTask);
+
+            let status = 'Planning';
+            let actual = 0;
+            let valueSaved = null;
+            let linkedInitiativeId = null;
+
+            if (project.status === 'Completed') {
               status = 'Completed';
               actual = t.estimate;
-            } else if (index === 2) {
-              status = 'In Progress';
-              actual = Math.floor(t.estimate / 2);
-            }
-          } else if (project.status === 'Planning' && index === 0) {
-            status = 'In Progress';
-          }
 
-          const isDeployment = ['Deployment', 'Global Rollout', 'Regional Localization', 'Multi-Market Rollout', 'Launch'].includes(t.title);
-          let marketStatus = {};
-
-          if (isDeployment && project.launchDetails) {
-            project.launchDetails.forEach((ld, i) => {
-              if (ld.market !== 'Global') {
-                // Randomize status for demo purposes
-                const statuses = ['Planning', 'In Progress', 'Completed', 'Delayed'];
-                // Use a deterministic way to pick status so it doesn't change on every render if we were using random,
-                // but here we are initializing state so random is fine for initial load.
-                // However, let's make it look realistic based on project status.
-                if (project.status === 'Completed') {
-                  marketStatus[ld.market] = 'Completed';
-                } else if (project.status === 'Planning') {
-                  marketStatus[ld.market] = 'Planning';
-                } else {
-                  // Active project: mix of statuses
-                  marketStatus[ld.market] = statuses[Math.floor(Math.random() * statuses.length)];
-                }
+              // Adjust actuals for historic projects to reflect value savings
+              // Falcon GT (2025) - ID 6
+              if (project.id === 6) {
+                if (t.title === 'Frontend Development') { actual = 80; valueSaved = 40; linkedInitiativeId = 1; }
+                if (t.title === 'QA') { actual = 15; valueSaved = 25; linkedInitiativeId = 1; }
+                if (t.title === 'UI Design') { actual = 55; valueSaved = 5000; linkedInitiativeId = 2; }
+                if (t.title === 'CMS Integration') { actual = 70; valueSaved = 150000; linkedInitiativeId = 3; }
               }
-            });
-          }
+              // Eagle SUV (2025) - ID 8
+              if (project.id === 8) {
+                if (t.title === 'UI Implementation') { actual = 40; valueSaved = 40; linkedInitiativeId = 1; }
+                if (t.title === 'Integration Testing') { actual = 15; valueSaved = 25; linkedInitiativeId = 1; }
+                if (t.title === '3D Asset Prep') { actual = 60; valueSaved = 12000; linkedInitiativeId = 2; }
+              }
+              // Hawk Sedan (2025) - ID 12
+              if (project.id === 12) {
+                if (t.title === 'Frontend Dev') { actual = 5; valueSaved = 30; linkedInitiativeId = 1; }
+              }
 
-          initialTasks.push({
-            id: Date.now() + project.id * 100 + index,
-            projectId: project.id,
-            title: t.title,
-            status: status,
-            assignee: null,
-            estimate: t.estimate,
-            actual: actual,
-            valueSaved: valueSaved,
-            linkedInitiativeId: linkedInitiativeId,
-            startDate: format(taskStart, 'yyyy-MM-dd'),
-            endDate: format(taskEnd, 'yyyy-MM-dd'),
-            predecessorId: index > 0 ? (Date.now() + project.id * 100 + index - 1) : null,
-            isMarketSpecific: isDeployment,
-            marketStatus: isDeployment ? marketStatus : null,
-            gatewayDependency: t.gatewayDependency
+            } else if (project.status === 'Active') {
+              if (index < 2) {
+                status = 'Completed';
+                actual = t.estimate;
+              } else if (index === 2) {
+                status = 'In Progress';
+                actual = Math.floor(t.estimate / 2);
+              }
+            } else if (project.status === 'Planning' && index === 0) {
+              status = 'In Progress';
+            }
+
+            const isDeployment = ['Deployment', 'Global Rollout', 'Regional Localization', 'Multi-Market Rollout', 'Launch'].includes(t.title);
+            let marketStatus = {};
+
+            if (isDeployment && project.launchDetails) {
+              project.launchDetails.forEach((ld, i) => {
+                if (ld.market !== 'Global') {
+                  // Randomize status for demo purposes
+                  const statuses = ['Planning', 'In Progress', 'Completed', 'Delayed'];
+                  // Use a deterministic way to pick status so it doesn't change on every render
+                  if (project.status === 'Completed') {
+                    marketStatus[ld.market] = 'Completed';
+                  } else if (project.status === 'Planning') {
+                    marketStatus[ld.market] = 'Planning';
+                  } else {
+                    marketStatus[ld.market] = statuses[Math.floor(Math.random() * statuses.length)];
+                  }
+                }
+              });
+            }
+
+            initialTasks.push({
+              id: Date.now() + project.id * 100 + index,
+              projectId: project.id,
+              title: t.title,
+              status: status,
+              assignee: null,
+              estimate: t.estimate,
+              actual: actual,
+              valueSaved: valueSaved,
+              linkedInitiativeId: linkedInitiativeId,
+              startDate: format(taskStart, 'yyyy-MM-dd'),
+              endDate: format(taskEnd, 'yyyy-MM-dd'),
+              predecessorId: index > 0 ? (Date.now() + project.id * 100 + index - 1) : null,
+              isMarketSpecific: isDeployment,
+              marketStatus: isDeployment ? marketStatus : null,
+              gatewayDependency: t.gatewayDependency
+            });
           });
-        });
+        }
 
         // Demo Rework Task for Project 5
         if (project.id === 5) {
@@ -600,7 +686,12 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => {
     if (!isDemoMode && resourcesQuery.data && !resourcesQuery.isLoading) {
-      setResources(resourcesQuery.data);
+      const mappedResources = resourcesQuery.data.map(r => ({
+        ...r,
+        internalRate: r.cost_rate || r.internalRate || 100,
+        clientRate: r.billable_rate || r.clientRate || 125
+      }));
+      setResources(mappedResources);
     }
   }, [isDemoMode, resourcesQuery.data, resourcesQuery.isLoading]);
 
@@ -742,8 +833,11 @@ export const AppProvider = ({ children }) => {
       // 1. Update the target task
       let updatedTasks = prev.map(t => t.id === taskId ? { ...t, ...updatedFields } : t);
 
-      // 2. Check for dependency conflicts and resolve them
-      if (updatedFields.endDate) {
+      // 2. Check for dependency conflicts and resolve them (push OR pull)
+      const updatedTask = updatedTasks.find(t => t.id === taskId);
+
+      // Resolve dependencies when end date changes OR when task is marked complete
+      if (updatedFields.endDate || updatedFields.status === 'Completed') {
         const resolveDependencies = (tasks, parentId) => {
           const parent = tasks.find(t => t.id === parentId);
           if (!parent) return tasks;
@@ -753,11 +847,14 @@ export const AppProvider = ({ children }) => {
           successors.forEach(successor => {
             const parentEnd = new Date(parent.endDate);
             const successorStart = new Date(successor.startDate);
+            const duration = differenceInDays(new Date(successor.endDate), new Date(successor.startDate));
 
-            // If parent ends after successor starts, push successor
-            if (parentEnd >= successorStart) {
-              const duration = differenceInDays(new Date(successor.endDate), new Date(successor.startDate));
-              const newStart = addDays(parentEnd, 1); // Start next day
+            // Calculate the ideal start date (day after parent ends)
+            const idealStart = addDays(parentEnd, 1);
+
+            // If successor can start earlier (parent finished early) OR needs to be pushed
+            if (successorStart.getTime() !== idealStart.getTime()) {
+              const newStart = idealStart;
               const newEnd = addDays(newStart, duration);
 
               const newStartStr = format(newStart, 'yyyy-MM-dd');
@@ -867,6 +964,44 @@ export const AppProvider = ({ children }) => {
     // Demo mode
     setInitiatives(prev => prev.map(i => i.id === id ? { ...i, ...updatedFields } : i));
   };
+
+  /**
+   * Calculate project cost based on task estimates and resource rates
+   * Used for both display and scenario planning
+   */
+  const getProjectCost = useCallback((projectId) => {
+    const projectTasks = tasks.filter(t => t.projectId === projectId);
+    const costs = projectTasks.reduce((acc, task) => {
+      // Find assignee to get their rate
+      const assignee = resources.find(r => r.id === task.assignee);
+      const internalRate = assignee?.internalRate || 100;
+      const clientRate = assignee?.clientRate || assignee?.internalRate || 125;
+
+      acc.internal += (task.estimate * internalRate);
+      acc.client += (task.estimate * clientRate);
+      return acc;
+    }, { internal: 0, client: 0 });
+
+    const margin = costs.internal > 0
+      ? Math.round(((costs.client - costs.internal) / costs.internal) * 100)
+      : 0;
+
+    return { ...costs, margin };
+  }, [tasks, resources]);
+
+  /**
+   * Get all projects with their current calculated costs
+   */
+  const projectsWithCosts = useMemo(() => {
+    return projects.map(p => {
+      const financials = getProjectCost(p.id);
+      return {
+        ...p,
+        estimatedCost: financials.client,
+        financials
+      };
+    });
+  }, [projects, getProjectCost]);
 
   const linkTaskToInitiative = (taskId, initiativeId, values) => {
     // 1. Find the task and initiative
@@ -1232,7 +1367,7 @@ export const AppProvider = ({ children }) => {
 
   return (
     <AppContext.Provider value={{
-      projects,
+      projects: projectsWithCosts,
       resources,
       tasks,
       teams,
@@ -1244,8 +1379,8 @@ export const AppProvider = ({ children }) => {
       addTask,
       updateTask,
       deleteTask,
-      addResource,
       updateResource,
+      addResource,
       deleteResource,
       addTeam,
       removeTeam,
@@ -1261,7 +1396,9 @@ export const AppProvider = ({ children }) => {
       addInitiative,
       updateInitiative,
       linkTaskToInitiative,
-      unlinkTaskFromInitiative
+      unlinkTaskFromInitiative,
+      leaveRequests,
+      submitLeaveRequest
     }}>
       {children}
     </AppContext.Provider>

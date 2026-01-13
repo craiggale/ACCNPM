@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     BarChart, Bar, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
@@ -7,9 +9,80 @@ import {
     TrendingUp, TrendingDown, AlertTriangle, CheckCircle,
     Activity, ArrowRight, Brain, Target, Clock, AlertCircle
 } from 'lucide-react';
+import { differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
 
 const KVITracking = () => {
-    // Mock Data
+    const { projects, tasks } = useApp();
+    const { currentUser } = useAuth();
+
+    // Filter projects for current tenant
+    const tenantProjects = useMemo(() => {
+        if (!currentUser) return projects;
+        return projects.filter(p => p.org_id === currentUser.org_id);
+    }, [projects, currentUser]);
+
+    // Calculate real performance rankings from project data
+    const projectRankings = useMemo(() => {
+        const projectMetrics = tenantProjects.map(project => {
+            const projectTasks = tasks.filter(t => t.projectId === project.id);
+            const completedTasks = projectTasks.filter(t => t.status === 'Completed');
+            const totalTasks = projectTasks.length;
+
+            // On-time delivery: % of completed tasks that finished on or before their endDate
+            const onTimeCount = completedTasks.filter(t => {
+                if (!t.actualEndDate || !t.endDate) return true; // Assume on-time if no actual date
+                return !isAfter(parseISO(t.actualEndDate), parseISO(t.endDate));
+            }).length;
+            const onTimeScore = totalTasks > 0 ? Math.round((onTimeCount / Math.max(completedTasks.length, 1)) * 100) : 100;
+
+            // Progress score: % completion
+            const progressScore = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
+
+            // Schedule health: basediff between planned end and current progress
+            const today = new Date();
+            const projectEnd = project.endDate ? parseISO(project.endDate) : today;
+            const daysRemaining = Math.max(0, differenceInDays(projectEnd, today));
+            const expectedProgress = totalTasks > 0 && project.startDate
+                ? Math.min(100, Math.round(((differenceInDays(today, parseISO(project.startDate))) /
+                    Math.max(1, differenceInDays(projectEnd, parseISO(project.startDate)))) * 100))
+                : 50;
+            const scheduleHealth = progressScore >= expectedProgress ? 100 : Math.round((progressScore / Math.max(1, expectedProgress)) * 100);
+
+            // Combined score
+            const overallScore = Math.round((onTimeScore * 0.4 + progressScore * 0.3 + scheduleHealth * 0.3));
+
+            return {
+                id: project.id,
+                name: project.name,
+                code: project.code,
+                onTimeScore,
+                progressScore,
+                scheduleHealth,
+                overallScore,
+                status: project.status,
+                daysRemaining
+            };
+        });
+
+        // Sort for best and worst performers
+        const sorted = [...projectMetrics].sort((a, b) => b.overallScore - a.overallScore);
+        const active = sorted.filter(p => p.status !== 'Completed' && p.status !== 'Paused');
+
+        return {
+            best: active.slice(0, 2).map(p => ({
+                name: `${p.code} ${p.name}`,
+                score: p.overallScore,
+                metric: p.onTimeScore >= 90 ? 'On-Time' : p.progressScore >= 80 ? 'Progress' : 'Delivery'
+            })),
+            atRisk: active.slice(-2).reverse().filter(p => p.overallScore < 80).map(p => ({
+                name: `${p.code} ${p.name}`,
+                score: p.overallScore,
+                metric: p.scheduleHealth < 70 ? 'Schedule' : p.onTimeScore < 70 ? 'Delays' : 'Progress'
+            }))
+        };
+    }, [tenantProjects, tasks]);
+
+    // Mock Data for other sections (can be made dynamic later)
     const portfolioMetrics = [
         { label: 'Avg Schedule Variance', value: '+8%', trend: 'up', status: 'warning' },
         { label: 'On-Time Delivery Rate', value: '78%', trend: 'stable', status: 'success' },
@@ -25,17 +98,6 @@ const KVITracking = () => {
         { month: 'May', rework: 11, delivery: 78 },
         { month: 'Jun', rework: 10, delivery: 82 },
     ];
-
-    const projectRankings = {
-        best: [
-            { name: 'Project Alpha', score: 95, metric: 'On-Time' },
-            { name: 'Project Beta', score: 92, metric: 'Quality' },
-        ],
-        atRisk: [
-            { name: 'Project Omega', score: 45, metric: 'Schedule' },
-            { name: 'Project Gamma', score: 58, metric: 'Budget' },
-        ]
-    };
 
     const comparisonData = [
         { subject: 'Schedule Adherence', A: 120, B: 110, fullMark: 150 },

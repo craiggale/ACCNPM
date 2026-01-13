@@ -47,6 +47,7 @@ const OperationalView = () => {
     const [timeView, setTimeView] = useState('Month'); // 'Week', 'Month', 'Quarter'
     const [showDetailOverlay, setShowDetailOverlay] = useState(false);
     const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+    const [chartFocus, setChartFocus] = useState('Demand'); // 'Demand', 'Cost'
 
     // Available filter options
     const TEAMS = ['All', 'Website', 'Configurator', 'Asset Production'];
@@ -332,6 +333,7 @@ const OperationalView = () => {
             }
 
             let periodDemand = 0;
+            let periodCost = 0;
             let projectDemands = {};
 
             projects.forEach(project => {
@@ -359,8 +361,14 @@ const OperationalView = () => {
                         const val = (monthlyHours * demandMultiplier) * ratio;
                         periodDemand += val;
 
-                        // Store per-project demand for stacking
-                        projectDemands[project.id] = val;
+                        // Calculate Cost (simplified for operational view: hours * avg rate)
+                        // In a real scenario, we'd use the actual resource rates assigned to tasks
+                        const avgRate = 100; // Baseline rate
+                        const costVal = val * avgRate;
+                        periodCost += costVal;
+
+                        // Store per-project demand or cost for stacking
+                        projectDemands[project.id] = chartFocus === 'Cost' ? costVal : val;
                         activeProjectIds.add(project.id);
                     }
                 }
@@ -369,6 +377,7 @@ const OperationalView = () => {
             return {
                 name: label,
                 demand: periodDemand,
+                cost: periodCost,
                 capacity: maxCapacity,
                 ...projectDemands
             };
@@ -440,7 +449,7 @@ const OperationalView = () => {
                                 {entry.name}:
                             </span>
                             <span style={{ color: '#fff', fontWeight: 500, fontSize: '0.85rem' }}>
-                                {Math.round(entry.value).toLocaleString()}h
+                                {chartFocus === 'Cost' ? `£${Math.round(entry.value).toLocaleString()}` : `${Math.round(entry.value).toLocaleString()}h`}
                             </span>
                         </div>
                     ))}
@@ -454,7 +463,7 @@ const OperationalView = () => {
                     }}>
                         <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}>Total:</span>
                         <span style={{ color: '#fff', fontWeight: 600 }}>
-                            {payload.reduce((sum, entry) => sum + entry.value, 0).toLocaleString()}h
+                            {chartFocus === 'Cost' ? `£${payload.reduce((sum, entry) => sum + entry.value, 0).toLocaleString()}` : `${payload.reduce((sum, entry) => sum + entry.value, 0).toLocaleString()}h`}
                         </span>
                     </div>
                 </div>
@@ -585,10 +594,41 @@ const OperationalView = () => {
                     )}
                 </div>
 
-                {/* Chart Section */}
                 <div className="card" style={{ marginBottom: 'var(--spacing-xl)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
-                        <h3 className="text-xl">Resource Forecast</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <h3 className="text-xl">Resource Forecast</h3>
+                            <div style={{ display: 'flex', backgroundColor: 'var(--bg-secondary)', padding: '2px', borderRadius: '4px', border: '1px solid var(--bg-tertiary)' }}>
+                                <button
+                                    onClick={() => setChartFocus('Demand')}
+                                    style={{
+                                        padding: '4px 12px',
+                                        fontSize: '0.75rem',
+                                        borderRadius: '2px',
+                                        backgroundColor: chartFocus === 'Demand' ? 'var(--bg-tertiary)' : 'transparent',
+                                        color: chartFocus === 'Demand' ? 'var(--text-primary)' : 'var(--text-muted)',
+                                        border: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Demand
+                                </button>
+                                <button
+                                    onClick={() => setChartFocus('Cost')}
+                                    style={{
+                                        padding: '4px 12px',
+                                        fontSize: '0.75rem',
+                                        borderRadius: '2px',
+                                        backgroundColor: chartFocus === 'Cost' ? 'var(--bg-tertiary)' : 'transparent',
+                                        color: chartFocus === 'Cost' ? 'var(--text-primary)' : 'var(--text-muted)',
+                                        border: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cost
+                                </button>
+                            </div>
+                        </div>
 
                         <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center' }}>
                             <select
@@ -749,13 +789,16 @@ const OperationalView = () => {
                                 />
                                 <YAxis
                                     stroke="var(--text-secondary)"
-                                    domain={[0, (dataMax) => Math.max(dataMax, maxCapacity) * 1.1]}
-                                    tickFormatter={(value) => value.toLocaleString()}
+                                    domain={[0, (dataMax) => {
+                                        if (chartFocus === 'Cost') return dataMax * 1.1;
+                                        return Math.max(dataMax, maxCapacity) * 1.1;
+                                    }]}
+                                    tickFormatter={(value) => chartFocus === 'Cost' ? `£${(value / 1000).toFixed(0)}k` : value.toLocaleString()}
                                     tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
                                     axisLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
                                     tickLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
                                     label={{
-                                        value: 'Hours',
+                                        value: chartFocus === 'Cost' ? 'Cost' : 'Hours',
                                         angle: -90,
                                         position: 'insideLeft',
                                         style: { textAnchor: 'middle', fill: 'var(--text-muted)' }
@@ -766,19 +809,21 @@ const OperationalView = () => {
                                     wrapperStyle={{ paddingTop: '20px' }}
                                     formatter={(value) => <span style={{ color: 'var(--text-secondary)' }}>{value}</span>}
                                 />
-                                <ReferenceLine
-                                    y={maxCapacity}
-                                    stroke="#ef4444"
-                                    strokeWidth={2}
-                                    strokeDasharray="8 4"
-                                    label={{
-                                        value: `Max Capacity: ${maxCapacity.toLocaleString()}h`,
-                                        position: 'right',
-                                        fill: '#ef4444',
-                                        fontSize: 12,
-                                        fontWeight: 600
-                                    }}
-                                />
+                                {chartFocus === 'Demand' && (
+                                    <ReferenceLine
+                                        y={maxCapacity}
+                                        stroke="#ef4444"
+                                        strokeWidth={2}
+                                        strokeDasharray="8 4"
+                                        label={{
+                                            value: `Max Capacity: ${maxCapacity.toLocaleString()}h`,
+                                            position: 'right',
+                                            fill: '#ef4444',
+                                            fontSize: 12,
+                                            fontWeight: 600
+                                        }}
+                                    />
+                                )}
 
                                 {activeProjectIds.map((pid, index) => {
                                     const project = projects.find(p => p.id === pid);

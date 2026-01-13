@@ -52,6 +52,22 @@ const ProjectHealthDashboard = ({ project, tasks }) => {
                     </div>
                 </div>
 
+                {/* Primary Delay Driver (if any) */}
+                {tasks.find(t => t.note) && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Primary Delay Driver</div>
+                        <div>
+                            <div style={{ fontWeight: 500, color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <AlertCircle size={14} />
+                                {tasks.find(t => t.note).note}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                                Source: {tasks.find(t => t.note).title}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Next Critical Task */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Next Critical Task</div>
@@ -123,6 +139,19 @@ const ProjectHealthDashboard = ({ project, tasks }) => {
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* Project Financials */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Project Financials</div>
+                    <div>
+                        <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            £{project.estimatedCost?.toLocaleString() || '0'}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                            Estimated total (Client Rates)
+                        </div>
                     </div>
                 </div>
 

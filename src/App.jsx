@@ -13,6 +13,7 @@ import Admin from './pages/Admin';
 import LaunchStatus from './pages/LaunchStatus';
 import KVITracking from './pages/KVITracking';
 import Initiatives from './pages/Initiatives';
+import MyAccount from './pages/MyAccount';
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -60,6 +61,7 @@ function AppRoutes() {
                     <Route path="/resources" element={<ResourceManagement />} />
                     <Route path="/kvi-tracking" element={<KVITracking />} />
                     <Route path="/initiatives" element={<Initiatives />} />
+                    <Route path="/my-account" element={<MyAccount />} />
                     <Route path="/admin" element={<Admin />} />
                   </Routes>
                 </Layout>

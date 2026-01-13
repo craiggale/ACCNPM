@@ -62,7 +62,7 @@ const ResourceManagement = () => {
     const isAdmin = currentUser?.role === 'Admin';
 
     const [isAdding, setIsAdding] = useState(false);
-    const [newResource, setNewResource] = useState({ name: '', role: 'Developer', team: 'Website', capacity: 160 });
+    const [newResource, setNewResource] = useState({ name: '', role: 'Developer', team: 'Website', capacity: 160, internalRate: 100, clientRate: 125 });
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [gaps, setGaps] = useState([]);
@@ -107,8 +107,8 @@ const ResourceManagement = () => {
 
     const handleAdd = (e) => {
         e.preventDefault();
-        addResource({ ...newResource, capacity: parseInt(newResource.capacity) });
-        setNewResource({ name: '', role: 'Developer', team: 'Website', capacity: 160 });
+        addResource({ ...newResource, capacity: parseInt(newResource.capacity), internalRate: parseInt(newResource.internalRate), clientRate: parseInt(newResource.clientRate) });
+        setNewResource({ name: '', role: 'Developer', team: 'Website', capacity: 160, internalRate: 100, clientRate: 125 });
         setIsAdding(false);
     };
 
@@ -123,7 +123,9 @@ const ResourceManagement = () => {
         updateResource(editingId, {
             ...editForm,
             capacity: parseInt(editForm.capacity),
-            leave: parseInt(editForm.leave) || 0
+            leave: parseInt(editForm.leave) || 0,
+            internalRate: parseInt(editForm.internalRate) || 0,
+            clientRate: parseInt(editForm.clientRate) || 0
         });
         setEditingId(null);
     };
@@ -774,11 +776,21 @@ const ResourceManagement = () => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-sm text-muted">Capacity (Hrs)</label>
+                                        <label className="text-sm text-muted">Internal Rate (£/h)</label>
                                         <input
                                             type="number"
-                                            value={newResource.capacity}
-                                            onChange={e => setNewResource({ ...newResource, capacity: e.target.value })}
+                                            value={newResource.internalRate}
+                                            onChange={e => setNewResource({ ...newResource, internalRate: e.target.value, clientRate: Math.round(e.target.value * 1.25) })}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm text-muted">Client Rate (£/h)</label>
+                                        <input
+                                            type="number"
+                                            value={newResource.clientRate}
+                                            onChange={e => setNewResource({ ...newResource, clientRate: e.target.value })}
                                             style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                                             required
                                         />
@@ -792,12 +804,15 @@ const ResourceManagement = () => {
                         )}
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr auto', padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 0.8fr 2fr 100px', gap: '1rem', padding: '0.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>
                                 <div>Name</div>
                                 <div>Role</div>
                                 <div>Team</div>
+                                <div>Internal Rate</div>
+                                <div>Client Rate</div>
+                                <div>Markup</div>
                                 <div>Utilization</div>
-                                <div></div>
+                                <div>Actions</div>
                             </div>
 
                             {resources.map(resource => {
@@ -814,8 +829,9 @@ const ResourceManagement = () => {
                                         onClick={() => setSelectedResource(resource)}
                                         style={{
                                             display: 'grid',
-                                            gridTemplateColumns: '2fr 1fr 1fr 2fr auto',
-                                            padding: '0.75rem 0.5rem',
+                                            gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 0.8fr 2fr 100px',
+                                            gap: '1rem',
+                                            padding: '0.75rem 1rem',
                                             backgroundColor: 'rgba(255, 255, 255, 0.02)',
                                             borderRadius: 'var(--radius-md)',
                                             alignItems: 'center',
@@ -859,9 +875,29 @@ const ResourceManagement = () => {
                                                 </select>
                                                 <input
                                                     type="number"
+                                                    value={editForm.internalRate}
+                                                    onChange={e => setEditForm({ ...editForm, internalRate: e.target.value, clientRate: Math.round(e.target.value * 1.25) })}
+                                                    onClick={e => e.stopPropagation()}
+                                                    style={{ padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                    placeholder="Internal"
+                                                />
+                                                <input
+                                                    type="number"
+                                                    value={editForm.clientRate}
+                                                    onChange={e => setEditForm({ ...editForm, clientRate: e.target.value })}
+                                                    onClick={e => e.stopPropagation()}
+                                                    style={{ padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                                                    placeholder="Client"
+                                                />
+                                                <div className="text-sm font-medium" style={{ color: 'var(--success)' }}>
+                                                    {Math.round(((editForm.clientRate - editForm.internalRate) / editForm.internalRate) * 100)}%
+                                                </div>
+                                                <input
+                                                    type="number"
                                                     value={editForm.capacity}
                                                     onChange={e => setEditForm({ ...editForm, capacity: e.target.value })}
                                                     onClick={e => e.stopPropagation()}
+                                                    title="Capacity (h/month)"
                                                     style={{ padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                                                 />
                                                 <div style={{ display: 'flex', gap: '0.25rem' }}>
@@ -874,6 +910,17 @@ const ResourceManagement = () => {
                                                 <div style={{ fontWeight: 500 }}>{resource.name}</div>
                                                 <div className="text-sm text-muted">{resource.role}</div>
                                                 <div className="text-sm text-muted">{resource.team || 'Website'}</div>
+                                                <div className="text-sm">£{resource.internalRate}/h</div>
+                                                <div className="text-sm" style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>£{resource.clientRate}/h</div>
+                                                <div className="text-xs font-bold" style={{
+                                                    color: 'var(--success)',
+                                                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    width: 'fit-content'
+                                                }}>
+                                                    +{Math.round(((resource.clientRate - resource.internalRate) / resource.internalRate) * 100)}%
+                                                </div>
 
                                                 {/* Utilization Bar */}
                                                 <div style={{ paddingRight: '1rem' }}>
@@ -937,125 +984,128 @@ const ResourceManagement = () => {
                     </div>
 
                 </div>
-            )}
+            )
+            }
 
             {/* Resource Detail Modal */}
-            {selectedResource && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000, backdropFilter: 'blur(4px)'
-                }} onClick={() => setSelectedResource(null)}>
-                    <div className="card" style={{ width: '800px', maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
-                            <div>
-                                <h3 className="text-xl">{selectedResource.name}</h3>
-                                <p className="text-muted">{selectedResource.role} • {selectedResource.team}</p>
-                            </div>
-                            <button onClick={() => setSelectedResource(null)} className="btn-ghost"><X size={24} /></button>
-                        </div>
-
-                        <div style={{ marginBottom: 'var(--spacing-xl)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                <span className="text-sm text-muted">Utilization</span>
-                                <span className="text-sm" style={{ fontWeight: 500 }}>
-                                    {resourceUtilization[selectedResource.id] || 0} / {parseInt(selectedResource.capacity) - (parseInt(selectedResource.leave) || 0)}h
-                                </span>
-                            </div>
-                            <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{
-                                    width: `${Math.min(((resourceUtilization[selectedResource.id] || 0) / (parseInt(selectedResource.capacity) - (parseInt(selectedResource.leave) || 0))) * 100, 100)}%`,
-                                    height: '100%',
-                                    backgroundColor: getUtilizationColor(resourceUtilization[selectedResource.id] || 0, parseInt(selectedResource.capacity) - (parseInt(selectedResource.leave) || 0))
-                                }}></div>
-                            </div>
-                        </div>
-
-                        <div style={{ marginBottom: 'var(--spacing-xl)', padding: '1rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--bg-tertiary)' }}>
-                            <h4 className="text-lg" style={{ marginBottom: '0.5rem' }}>Leave Management</h4>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Leave Hours (This Month)</label>
-                                    <input
-                                        type="number"
-                                        value={selectedResource.leave || 0}
-                                        onChange={(e) => {
-                                            const newLeave = parseInt(e.target.value) || 0;
-                                            updateResource(selectedResource.id, { leave: newLeave });
-                                            setSelectedResource(prev => ({ ...prev, leave: newLeave }));
-                                        }}
-                                        style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                                    />
+            {
+                selectedResource && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 1000, backdropFilter: 'blur(4px)'
+                    }} onClick={() => setSelectedResource(null)}>
+                        <div className="card" style={{ width: '800px', maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
+                                <div>
+                                    <h3 className="text-xl">{selectedResource.name}</h3>
+                                    <p className="text-muted">{selectedResource.role} • {selectedResource.team}</p>
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <div className="text-sm text-muted">Effective Capacity</div>
-                                    <div className="text-xl" style={{ color: 'var(--text-primary)' }}>
-                                        {parseInt(selectedResource.capacity) - (parseInt(selectedResource.leave) || 0)}h
-                                    </div>
+                                <button onClick={() => setSelectedResource(null)} className="btn-ghost"><X size={24} /></button>
+                            </div>
+
+                            <div style={{ marginBottom: 'var(--spacing-xl)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                    <span className="text-sm text-muted">Utilization</span>
+                                    <span className="text-sm" style={{ fontWeight: 500 }}>
+                                        {resourceUtilization[selectedResource.id] || 0} / {parseInt(selectedResource.capacity) - (parseInt(selectedResource.leave) || 0)}h
+                                    </span>
+                                </div>
+                                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{
+                                        width: `${Math.min(((resourceUtilization[selectedResource.id] || 0) / (parseInt(selectedResource.capacity) - (parseInt(selectedResource.leave) || 0))) * 100, 100)}%`,
+                                        height: '100%',
+                                        backgroundColor: getUtilizationColor(resourceUtilization[selectedResource.id] || 0, parseInt(selectedResource.capacity) - (parseInt(selectedResource.leave) || 0))
+                                    }}></div>
                                 </div>
                             </div>
-                        </div>
 
-                        <h4 className="text-lg" style={{ marginBottom: 'var(--spacing-md)' }}>Assigned Tasks</h4>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {tasks.filter(t => t.assignee === selectedResource.id).length === 0 && (
-                                <p className="text-muted">No tasks assigned.</p>
-                            )}
-                            {tasks.filter(t => t.assignee === selectedResource.id).map(task => (
-                                <div key={task.id} style={{
-                                    padding: '1rem',
-                                    backgroundColor: 'var(--bg-primary)',
-                                    borderRadius: 'var(--radius-md)',
-                                    border: '1px solid var(--bg-tertiary)',
-                                    display: 'grid',
-                                    gridTemplateColumns: '2fr 1fr 1fr auto',
-                                    gap: '1rem',
-                                    alignItems: 'center'
-                                }}>
-                                    <div>
-                                        <div style={{ fontWeight: 500 }}>{task.title}</div>
-                                        {/* Find project name if possible, or just show ID for now */}
-                                        <div className="text-sm text-muted">Project ID: {task.projectId}</div>
-                                    </div>
-
-                                    <select
-                                        value={task.status}
-                                        onChange={(e) => handleTaskUpdate(task.id, { status: e.target.value })}
-                                        style={{ padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                                    >
-                                        <option value="Planning">Planning</option>
-                                        <option value="In Progress">In Progress</option>
-                                        <option value="Completed">Completed</option>
-                                        <option value="Delayed">Delayed</option>
-                                    </select>
-
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ marginBottom: 'var(--spacing-xl)', padding: '1rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--bg-tertiary)' }}>
+                                <h4 className="text-lg" style={{ marginBottom: '0.5rem' }}>Leave Management</h4>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label className="text-sm text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Leave Hours (This Month)</label>
                                         <input
                                             type="number"
-                                            value={task.estimate}
-                                            onChange={(e) => handleTaskUpdate(task.id, { estimate: parseInt(e.target.value) || 0 })}
-                                            style={{ width: '60px', padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                            value={selectedResource.leave || 0}
+                                            onChange={(e) => {
+                                                const newLeave = parseInt(e.target.value) || 0;
+                                                updateResource(selectedResource.id, { leave: newLeave });
+                                                setSelectedResource(prev => ({ ...prev, leave: newLeave }));
+                                            }}
+                                            style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                                         />
-                                        <span className="text-sm text-muted">hrs</span>
                                     </div>
-
-                                    <button
-                                        className="btn-ghost"
-                                        style={{ color: 'var(--danger)' }}
-                                        onClick={() => handleTaskUpdate(task.id, { assignee: null })}
-                                        title="Unassign"
-                                    >
-                                        <X size={16} />
-                                    </button>
+                                    <div style={{ flex: 1 }}>
+                                        <div className="text-sm text-muted">Effective Capacity</div>
+                                        <div className="text-xl" style={{ color: 'var(--text-primary)' }}>
+                                            {parseInt(selectedResource.capacity) - (parseInt(selectedResource.leave) || 0)}h
+                                        </div>
+                                    </div>
                                 </div>
-                            ))}
+                            </div>
+
+                            <h4 className="text-lg" style={{ marginBottom: 'var(--spacing-md)' }}>Assigned Tasks</h4>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {tasks.filter(t => t.assignee === selectedResource.id).length === 0 && (
+                                    <p className="text-muted">No tasks assigned.</p>
+                                )}
+                                {tasks.filter(t => t.assignee === selectedResource.id).map(task => (
+                                    <div key={task.id} style={{
+                                        padding: '1rem',
+                                        backgroundColor: 'var(--bg-primary)',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--bg-tertiary)',
+                                        display: 'grid',
+                                        gridTemplateColumns: '2fr 1fr 1fr auto',
+                                        gap: '1rem',
+                                        alignItems: 'center'
+                                    }}>
+                                        <div>
+                                            <div style={{ fontWeight: 500 }}>{task.title}</div>
+                                            {/* Find project name if possible, or just show ID for now */}
+                                            <div className="text-sm text-muted">Project ID: {task.projectId}</div>
+                                        </div>
+
+                                        <select
+                                            value={task.status}
+                                            onChange={(e) => handleTaskUpdate(task.id, { status: e.target.value })}
+                                            style={{ padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                        >
+                                            <option value="Planning">Planning</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Completed">Completed</option>
+                                            <option value="Delayed">Delayed</option>
+                                        </select>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <input
+                                                type="number"
+                                                value={task.estimate}
+                                                onChange={(e) => handleTaskUpdate(task.id, { estimate: parseInt(e.target.value) || 0 })}
+                                                style={{ width: '60px', padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                            />
+                                            <span className="text-sm text-muted">hrs</span>
+                                        </div>
+
+                                        <button
+                                            className="btn-ghost"
+                                            style={{ color: 'var(--danger)' }}
+                                            onClick={() => handleTaskUpdate(task.id, { assignee: null })}
+                                            title="Unassign"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

@@ -12,7 +12,8 @@ const PrimaryForecastChart = ({
     setViewRole,
     chartFocus,
     setChartFocus,
-    projects // needed for Gantt/Priority views
+    projects, // needed for Gantt/Priority views
+    planningMode // 'Standard' or 'ResourceFirst'
 }) => {
     return (
         <div className="card" style={{ height: '450px', display: 'flex', flexDirection: 'column' }}>
@@ -89,6 +90,17 @@ const PrimaryForecastChart = ({
                             >
                                 Capacity
                             </button>
+                            <button
+                                onClick={() => setChartFocus('Cost')}
+                                style={{
+                                    padding: '2px 8px',
+                                    fontSize: '0.75rem',
+                                    backgroundColor: chartFocus === 'Cost' ? 'var(--accent-primary)' : 'transparent',
+                                    color: chartFocus === 'Cost' ? 'white' : 'var(--text-muted)'
+                                }}
+                            >
+                                Cost
+                            </button>
                         </div>
 
                         <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--bg-tertiary)' }} />
@@ -132,6 +144,10 @@ const PrimaryForecastChart = ({
                                         <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
                                         <stop offset="100%" stopColor="#ef4444" stopOpacity={0.6} />
                                     </linearGradient>
+                                    <linearGradient id="flexDemandGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.6} />
+                                    </linearGradient>
                                 </defs>
                                 <CartesianGrid
                                     strokeDasharray="3 3"
@@ -148,15 +164,16 @@ const PrimaryForecastChart = ({
                                 <YAxis
                                     stroke="var(--text-secondary)"
                                     domain={[0, (dataMax) => {
+                                        if (chartFocus === 'Cost') return dataMax * 1.1;
                                         const maxCap = data[0]?.projectedCapacity || 0;
                                         return Math.max(dataMax, maxCap) * 1.1;
                                     }]}
                                     tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
                                     axisLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
                                     tickLine={{ stroke: 'rgba(161, 0, 255, 0.2)' }}
-                                    tickFormatter={(value) => value.toLocaleString()}
+                                    tickFormatter={(value) => chartFocus === 'Cost' ? `£${(value / 1000).toFixed(0)}k` : value.toLocaleString()}
                                     label={{
-                                        value: 'Hours',
+                                        value: chartFocus === 'Cost' ? 'Cost' : 'Hours',
                                         angle: -90,
                                         position: 'insideLeft',
                                         style: { textAnchor: 'middle', fill: 'var(--text-muted)' }
@@ -204,7 +221,7 @@ const PrimaryForecastChart = ({
                                                                 {entry.name}:
                                                             </span>
                                                             <span style={{ color: '#fff', fontWeight: 500, fontSize: '0.85rem' }}>
-                                                                {Math.round(entry.value).toLocaleString()}h
+                                                                {chartFocus === 'Cost' ? `£${Math.round(entry.value).toLocaleString()}` : `${Math.round(entry.value).toLocaleString()}h`}
                                                             </span>
                                                         </div>
                                                     ))}
@@ -224,19 +241,38 @@ const PrimaryForecastChart = ({
                                 {chartFocus === 'Demand' && (
                                     <>
                                         <Bar
-                                            dataKey="projectedDemand"
-                                            name="Projected Demand"
+                                            dataKey="fixedDemand"
+                                            name="Base Demand"
+                                            stackId="a"
+                                            fill="url(#demandGradient)"
+                                            radius={[0, 0, 0, 0]}
+                                        />
+                                        <Bar
+                                            dataKey="flexibleDemand"
+                                            name="Resource Driven"
+                                            stackId="a"
+                                            fill="url(#flexDemandGradient)"
                                             radius={[6, 6, 0, 0]}
                                             animationDuration={800}
-                                            animationEasing="ease-out"
                                         >
                                             {data.map((entry, index) => (
                                                 <Cell
                                                     key={`cell-${index}`}
-                                                    fill={entry.projectedDemand > entry.projectedCapacity ? 'url(#demandOverloadGradient)' : 'url(#demandGradient)'}
+                                                    fill={(entry.fixedDemand + entry.flexibleDemand) > entry.projectedCapacity ? 'url(#demandOverloadGradient)' : 'url(#flexDemandGradient)'}
                                                 />
                                             ))}
                                         </Bar>
+                                        {planningMode === 'ResourceFirst' && (
+                                            <Bar
+                                                dataKey="unusedCapacity"
+                                                name="Unused Capacity"
+                                                stackId="a"
+                                                fill="rgba(16, 185, 129, 0.1)" // Very faint green
+                                                stroke="rgba(16, 185, 129, 0.3)"
+                                                strokeDasharray="3 3"
+                                                radius={[6, 6, 0, 0]}
+                                            />
+                                        )}
 
                                         {/* Ghost bar for Base Capacity if different */}
                                         {data[0]?.projectedCapacity !== data[0]?.baseCapacity && (
@@ -261,6 +297,27 @@ const PrimaryForecastChart = ({
                                         <Bar dataKey="baseCapacity" name="Original Capacity" fill="var(--text-muted)" opacity={0.3} radius={[4, 4, 0, 0]} />
                                         <Bar dataKey="projectedCapacity" name="New Capacity" fill="#10B981" radius={[4, 4, 0, 0]} />
                                         <Line type="monotone" dataKey="projectedDemand" name="Demand" stroke="#A100FF" strokeDasharray="5 5" strokeWidth={2} dot={{ fill: '#A100FF' }} />
+                                    </>
+                                )}
+
+                                {/* COST FOCUS VIEW */}
+                                {chartFocus === 'Cost' && (
+                                    <>
+                                        <Bar
+                                            dataKey="projectedCost"
+                                            name="Projected Cost"
+                                            fill="url(#demandGradient)"
+                                            radius={[6, 6, 0, 0]}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="baseCost"
+                                            name="Baseline Cost"
+                                            stroke="var(--text-muted)"
+                                            strokeDasharray="5 5"
+                                            strokeWidth={2}
+                                            dot={false}
+                                        />
                                     </>
                                 )}
                             </ComposedChart>
@@ -298,7 +355,7 @@ const PrimaryForecastChart = ({
                                                     borderRadius: 'var(--radius-sm)',
                                                     opacity: p.status === 'Paused' ? 0.6 : 1
                                                 }}>
-                                                    <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{p.name}</div>
+                                                    <div style={{ fontWeight: 500, fontSize: '0.875rem' }}><span style={{ color: 'var(--accent-primary)' }}>{p.code}</span> {p.name}</div>
                                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.startDate} - {p.endDate}</div>
                                                     {p.status === 'Draft' && <span style={{ fontSize: '0.65rem', padding: '1px 4px', backgroundColor: 'var(--accent-primary)', color: 'white', borderRadius: '2px' }}>DRAFT</span>}
                                                     {p.status === 'Paused' && <span style={{ fontSize: '0.65rem', padding: '1px 4px', backgroundColor: 'var(--text-muted)', color: 'white', borderRadius: '2px' }}>PAUSED</span>}

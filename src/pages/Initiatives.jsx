@@ -467,7 +467,7 @@ const InitiativeDashboard = ({ initiative, onBack }) => {
 
     const getProjectName = (id) => {
         const project = projects.find(p => p.id === parseInt(id));
-        return project ? project.name : `Project ID: ${id}`;
+        return project ? `${project.code} ${project.name}` : `Project ID: ${id}`;
     };
 
     const handleUnlink = (taskId) => {
@@ -642,7 +642,7 @@ const InitiativeDashboard = ({ initiative, onBack }) => {
                                 >
                                     <option value="">-- Select Project --</option>
                                     {projects.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                        <option key={p.id} value={p.id}>{p.code} {p.name}</option>
                                     ))}
                                 </select>
                             </div>

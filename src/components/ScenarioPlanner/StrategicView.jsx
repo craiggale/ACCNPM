@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import GanttChart from '../GanttChart';
 // Removed Recharts imports as they are now in PrimaryForecastChart
 import { Plus, Trash2, Zap, ArrowRight, BrainCircuit, RefreshCw, CheckCircle, Play, Filter, LayoutList, Calendar, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { addMonths, format, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+import { addMonths, format, startOfMonth, endOfMonth, differenceInDays, subWeeks } from 'date-fns';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { ResolutionEngine, getRoleDistribution, normalizeRole } from '../../utils/ResolutionEngine';
@@ -39,6 +39,8 @@ const StrategicView = () => {
     const [forecastView, setForecastView] = useState('Resource'); // 'Resource', 'Timeline', 'Priority'
     const [chartFocus, setChartFocus] = useState('Demand'); // 'Demand', 'Capacity'
     const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+    const [planningMode, setPlanningMode] = useState('Standard'); // 'Standard', 'ResourceFirst'
+    const [selectedTimelineProject, setSelectedTimelineProject] = useState(null); // For expanded Gantt view
 
     // NEW: Comparison State
     const [activeSolutionId, setActiveSolutionId] = useState('current'); // 'current' or solution.id
@@ -61,6 +63,7 @@ const StrategicView = () => {
             ...liveProjects.map(p => ({ ...p })),
             ...draftProjects.map(p => ({ ...p }))
         ];
+
         auditLog.forEach(solution => {
             const action = solution.action;
             if (action.type === 'UPDATE_PROJECT') {
@@ -71,8 +74,80 @@ const StrategicView = () => {
                 if (idx !== -1) currentProjects[idx].status = 'Paused';
             }
         });
+
+        // --- Resource-Driven Scheduling ---
+        // Only apply in "ResourceFirst" mode
+        // Resource First = calculate EARLIEST possible completion based on available capacity
+        if (planningMode === 'ResourceFirst') {
+            // 1. Get projected resources (Live + Added via Solutions)
+            let currentResources = [...liveResources];
+            auditLog.forEach(solution => {
+                if (solution.action.type === 'ADD_RESOURCE') {
+                    currentResources.push({ ...solution.action.resource, id: `temp-${solution.id}` });
+                }
+            });
+
+            // 2. Schedule "Flexible" (Resource-Driven) projects
+            // Calculate how fast they can complete given available capacity
+            const fixedProjects = currentProjects.filter(p => !p.isResourceDriven && p.status !== 'Paused');
+            const flexibleProjects = currentProjects.filter(p => p.isResourceDriven && p.status !== 'Paused');
+
+            flexibleProjects.forEach(flexProj => {
+                const keyRole = flexProj.type === 'Asset Production' ? 'Designer' : 'Developer';
+                const keyDist = getRoleDistribution(flexProj.type || 'Website')[keyRole] || 0.5;
+
+                // Calculate Total Capacity for Key Role (Monthly)
+                const roleCapacity = currentResources
+                    .filter(r => normalizeRole(r.role) === keyRole)
+                    .reduce((sum, r) => sum + parseInt(r.capacity), 0);
+
+                let remainingEffort = parseInt(flexProj.totalEffort || 960);
+                let currentMonth = new Date(flexProj.startDate);
+
+                // Calculate how fast we can burn through the work with FULL available capacity
+                let safety = 0;
+                while (remainingEffort > 1 && safety < 60) {
+                    const monthStart = startOfMonth(currentMonth);
+                    const monthEnd = endOfMonth(currentMonth);
+
+                    // Calculate Demand from Fixed Projects for this month
+                    let committedDemand = 0;
+                    fixedProjects.forEach(p => {
+                        const pStart = new Date(p.startDate);
+                        const pEnd = new Date(p.endDate);
+                        if (pStart <= monthEnd && pEnd >= monthStart) {
+                            let val = 320; // Medium
+                            if (p.scale === 'Small') val = 160;
+                            if (p.scale === 'Large') val = 640;
+                            const ratio = getRoleDistribution(p.type || 'Website')[keyRole] || 0;
+                            committedDemand += (val * ratio);
+                        }
+                    });
+
+                    // Available capacity = Total - Committed to fixed projects
+                    const available = Math.max(0, roleCapacity - committedDemand);
+
+                    // In Resource First mode, we can use ALL available capacity (not capped by project size)
+                    // This allows projects to finish faster when there's spare capacity
+                    const burn = available * keyDist; // Effective burn on this project
+
+                    if (burn > 0 && keyDist > 0) {
+                        const totalBurn = burn / keyDist;
+                        remainingEffort -= totalBurn;
+                    }
+
+                    currentMonth = addMonths(currentMonth, 1);
+                    safety++;
+                }
+
+                // After loop exits, currentMonth is one past completion
+                const completionMonth = addMonths(currentMonth, -1);
+                flexProj.endDate = format(endOfMonth(completionMonth), 'yyyy-MM-dd');
+            });
+        }
+
         return currentProjects.filter(p => p.status !== 'Paused');
-    }, [liveProjects, draftProjects, auditLog]);
+    }, [liveProjects, draftProjects, auditLog, liveResources, planningMode]);
 
     const currentSandboxResources = useMemo(() => {
         let currentResources = [...liveResources];
@@ -135,41 +210,68 @@ const StrategicView = () => {
         const baseTotalCapacity = getCap(currentSandboxResources);
         const projectedTotalCapacity = getCap(previewResources);
 
-        const getDemand = (projList, dateRange) => {
+        const getDemandAndCost = (projList, dateRange) => {
             const [start, end] = dateRange;
-            let d = 0;
+            let totalD = 0;
+            let fixedD = 0;
+            let flexD = 0;
+            let c = 0;
+
             projList.forEach(p => {
+                // Handle paused projects in refined views
+                if (p.status === 'Paused') return;
+
                 const pStart = new Date(p.startDate);
                 const pEnd = new Date(p.endDate);
+
                 if (pStart <= end && pEnd >= start) {
                     let val = 320;
                     if (p.scale === 'Large') val = 640;
                     if (p.scale === 'Small') val = 160;
 
                     const dist = getRoleDistribution(p.type || 'Website');
+                    let pDemand = 0;
+
                     if (roleFilter === 'All') {
-                        Object.entries(dist).forEach(([role, ratio]) => d += val * ratio);
+                        Object.entries(dist).forEach(([role, ratio]) => pDemand += val * ratio);
                     } else {
-                        d += val * (dist[roleFilter] || 0);
+                        pDemand += val * (dist[roleFilter] || 0);
                     }
+
+                    totalD += pDemand;
+                    if (p.isResourceDriven) {
+                        flexD += pDemand;
+                    } else {
+                        fixedD += pDemand;
+                    }
+
+                    // Simple cost forecast
+                    c += val * 125;
                 }
             });
-            return d;
+            return { demand: totalD, fixedDemand: fixedD, flexibleDemand: flexD, cost: c };
         };
 
         const data = months.map(date => {
             const label = format(date, 'MMM yyyy');
             const range = [startOfMonth(date), endOfMonth(date)];
 
-            const baseDemand = getDemand(currentSandboxProjects, range);
-            const projectedDemand = getDemand(previewProjects, range);
+            const baseMetrics = getDemandAndCost(currentSandboxProjects, range);
+            const projectedMetrics = getDemandAndCost(previewProjects, range);
 
             return {
                 name: label,
-                baseDemand,      // "Current Scenario" Demand
-                projectedDemand, // "Previewed Solution" Demand
-                baseCapacity: baseTotalCapacity, // "Current Scenario" Capacity
-                projectedCapacity: projectedTotalCapacity // "Previewed Solution" Capacity
+                baseDemand: baseMetrics.demand,
+                projectedDemand: projectedMetrics.demand,
+                // Split for stacked charts
+                fixedDemand: projectedMetrics.fixedDemand,
+                flexibleDemand: projectedMetrics.flexibleDemand,
+
+                baseCost: baseMetrics.cost,
+                projectedCost: projectedMetrics.cost,
+                baseCapacity: baseTotalCapacity,
+                projectedCapacity: projectedTotalCapacity,
+                unusedCapacity: Math.max(0, projectedTotalCapacity - (projectedMetrics.fixedDemand + projectedMetrics.flexibleDemand))
             };
         });
 
@@ -181,7 +283,7 @@ const StrategicView = () => {
     // --- Auto-Focus Logic ---
     useEffect(() => {
         if (currentConflict) {
-            setViewRole(currentConflict.role);
+            // Keep viewRole at "All" by default - user can filter if needed
             setActiveSolutionId('current'); // Reset tab when conflict changes
         }
     }, [currentConflict]);
@@ -239,7 +341,46 @@ const StrategicView = () => {
                     <span className="text-sm font-medium" style={{ backgroundColor: 'var(--accent-primary)', color: 'white', padding: '2px 8px', borderRadius: '4px', marginRight: '8px' }}>SANDBOX MODE</span>
                     <span className="text-muted">Changes here do not affect the live project portfolio.</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    {/* Mode Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="text-xs text-muted">Planning:</span>
+                        <div style={{ display: 'flex', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: '3px', border: '2px solid var(--bg-tertiary)' }}>
+                            <button
+                                onClick={() => setPlanningMode('Standard')}
+                                style={{
+                                    padding: '6px 16px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    backgroundColor: planningMode === 'Standard' ? 'var(--accent-primary)' : 'transparent',
+                                    color: planningMode === 'Standard' ? 'white' : 'var(--text-muted)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                📅 Standard
+                            </button>
+                            <button
+                                onClick={() => setPlanningMode('ResourceFirst')}
+                                style={{
+                                    padding: '6px 16px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    backgroundColor: planningMode === 'ResourceFirst' ? 'var(--accent-secondary)' : 'transparent',
+                                    color: planningMode === 'ResourceFirst' ? 'white' : 'var(--text-muted)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                👥 Resource First
+                            </button>
+                        </div>
+                    </div>
+
                     {draftProjects.length > 0 && (
                         <button onClick={resetSandbox} className="btn btn-ghost" style={{ fontSize: '0.875rem' }}>
                             <RefreshCw size={14} style={{ marginRight: '4px' }} /> Reset Sandbox
@@ -314,36 +455,20 @@ const StrategicView = () => {
 
                             {isAddingDraft && (
                                 <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                    <div className="card" style={{ width: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-                                        <h3 className="text-xl" style={{ marginBottom: '1rem' }}>Add Draft Project</h3>
-                                        <form onSubmit={(e) => {
-                                            e.preventDefault();
-                                            const formData = new FormData(e.target);
-                                            handleAddDraft({
-                                                name: formData.get('name'),
-                                                type: formData.get('type'),
-                                                scale: formData.get('scale'),
-                                                startDate: formData.get('startDate'),
-                                                endDate: formData.get('endDate')
-                                            });
-                                        }}>
-                                            {/* ... Reusing Form Fields ... */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                                <input name="name" className="input" placeholder="Project Name" required />
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                                    <select name="type" className="input"><option value="Website">Website</option><option value="Configurator">Configurator</option></select>
-                                                    <select name="scale" className="input"><option value="Small">Small</option><option value="Medium">Medium</option><option value="Large">Large</option></select>
-                                                </div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                                    <input name="startDate" type="date" className="input" required />
-                                                    <input name="endDate" type="date" className="input" required />
-                                                </div>
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-                                                    <button type="button" className="btn btn-ghost" onClick={() => setIsAddingDraft(false)}>Cancel</button>
-                                                    <button type="submit" className="btn btn-primary">Add to Sandbox</button>
-                                                </div>
+                                    <div style={{ width: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+                                        <div className="card">
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                <h3 className="text-xl">Add Draft Project</h3>
+                                                <button onClick={() => setIsAddingDraft(false)} className="btn-ghost" style={{ padding: '4px' }}>
+                                                    <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
+                                                </button>
                                             </div>
-                                        </form>
+                                            <NewProjectPane
+                                                onClose={() => setIsAddingDraft(false)}
+                                                onAdd={handleAddDraft}
+                                                planningMode={planningMode}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -358,7 +483,7 @@ const StrategicView = () => {
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                                     }}>
                                         <div>
-                                            <div style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{p.name} <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.7 }}>DRAFT</span></div>
+                                            <div style={{ fontWeight: 600, color: 'var(--accent-primary)' }}><span style={{ opacity: 0.8 }}>{p.code}</span> {p.name} <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.7 }}>DRAFT</span></div>
                                             <div className="text-xs text-muted">{p.startDate} - {p.endDate} • {p.scale}</div>
                                         </div>
                                         <button onClick={() => removeDraft(p.id)} className="btn-ghost" style={{ padding: '4px' }}>
@@ -377,7 +502,7 @@ const StrategicView = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '0.5rem', opacity: 0.6 }}>
                                         {currentSandboxProjects.filter(p => !p.isDraft).map(p => (
                                             <div key={p.id} className="text-xs" style={{ padding: '4px 8px', display: 'flex', justifyContent: 'space-between', textDecoration: p.status === 'Paused' ? 'line-through' : 'none', color: p.status === 'Paused' ? 'var(--text-muted)' : 'inherit' }}>
-                                                <span>{p.name}</span>
+                                                <span><span style={{ color: 'var(--accent-primary)' }}>{p.code}</span> {p.name}</span>
                                                 {p.status === 'Paused' && <span>PAUSED</span>}
                                             </div>
                                         ))}
@@ -401,7 +526,194 @@ const StrategicView = () => {
                         chartFocus={chartFocus}
                         setChartFocus={setChartFocus}
                         projects={previewCalculations.previewProjects}
+                        planningMode={planningMode}
                     />
+
+                    {/* PROJECT TIMELINE SUMMARY */}
+                    <div style={{
+                        marginTop: 'var(--spacing-lg)',
+                        padding: 'var(--spacing-md)',
+                        backgroundColor: 'var(--bg-secondary)',
+                        borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--bg-tertiary)'
+                    }}>
+                        <h3 className="text-lg font-bold mb-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Calendar size={18} />
+                            Project Completion Dates
+                            <span className="text-xs" style={{
+                                padding: '2px 8px',
+                                borderRadius: 'var(--radius-sm)',
+                                backgroundColor: planningMode === 'ResourceFirst' ? 'var(--accent-secondary)' : 'var(--bg-tertiary)',
+                                color: planningMode === 'ResourceFirst' ? 'white' : 'var(--text-muted)',
+                                marginLeft: 'auto'
+                            }}>
+                                {planningMode === 'ResourceFirst' ? 'Resource Driven' : 'Standard'}
+                            </span>
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {previewCalculations.previewProjects.map(project => {
+                                const originalEnd = new Date(project.originalEndDate || project.endDate);
+                                const calculatedEnd = new Date(project.endDate);
+                                const daysDiff = Math.round((calculatedEnd - originalEnd) / (1000 * 60 * 60 * 24));
+                                const isDelayed = daysDiff > 0;
+                                const isEarly = daysDiff < 0;
+                                const isResourceDriven = project.isResourceDriven;
+                                const isSelected = selectedTimelineProject?.id === project.id;
+
+                                return (
+                                    <div key={project.id}>
+                                        {/* Clickable Project Card */}
+                                        <div
+                                            onClick={() => setSelectedTimelineProject(isSelected ? null : project)}
+                                            style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: '1fr 120px 30px 120px 100px',
+                                                alignItems: 'center',
+                                                gap: '12px',
+                                                padding: '10px 12px',
+                                                backgroundColor: isSelected ? 'var(--bg-tertiary)' : 'var(--bg-primary)',
+                                                borderRadius: 'var(--radius-md)',
+                                                borderLeft: `4px solid ${isResourceDriven ? 'var(--accent-secondary)' : isDelayed ? 'var(--danger)' : isEarly ? 'var(--success)' : 'var(--bg-tertiary)'}`,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = isSelected ? 'var(--bg-tertiary)' : 'var(--bg-primary)'}
+                                        >
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                                                    <span style={{ color: 'var(--accent-primary)', marginRight: '0.5rem' }}>{project.code}</span>
+                                                    {project.name}
+                                                </div>
+                                                <div className="text-xs text-muted">
+                                                    {project.type} • {project.scale}
+                                                    {isResourceDriven && <span style={{ color: 'var(--accent-secondary)', marginLeft: '0.5rem' }}>• Resource Driven</span>}
+                                                </div>
+                                            </div>
+                                            <div className="text-sm" style={{ textAlign: 'center' }}>
+                                                <div className="text-xs text-muted">Original</div>
+                                                <div>{format(originalEnd, 'MMM d, yyyy')}</div>
+                                            </div>
+                                            <div style={{ textAlign: 'center' }}>
+                                                <ArrowRight size={16} className="text-muted" />
+                                            </div>
+                                            <div className="text-sm" style={{ textAlign: 'center', fontWeight: 600 }}>
+                                                <div className="text-xs text-muted">Calculated</div>
+                                                <div style={{ color: isDelayed ? 'var(--danger)' : isEarly ? 'var(--success)' : 'inherit' }}>
+                                                    {format(calculatedEnd, 'MMM d, yyyy')}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                {daysDiff !== 0 && (
+                                                    <span style={{
+                                                        padding: '2px 8px',
+                                                        borderRadius: 'var(--radius-sm)',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        backgroundColor: isDelayed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                                        color: isDelayed ? 'var(--danger)' : 'var(--success)'
+                                                    }}>
+                                                        {isDelayed ? '+' : ''}{daysDiff}d
+                                                    </span>
+                                                )}
+                                                {daysDiff === 0 && (
+                                                    <span className="text-xs text-muted">On schedule</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Gantt Comparison View */}
+                                        {isSelected && (
+                                            <div style={{
+                                                marginTop: '8px',
+                                                marginLeft: '16px',
+                                                padding: '16px',
+                                                backgroundColor: 'var(--bg-primary)',
+                                                borderRadius: 'var(--radius-md)',
+                                                border: '1px solid var(--bg-tertiary)'
+                                            }}>
+                                                <h4 className="text-sm font-bold mb-3">Timeline Comparison</h4>
+
+                                                {/* Mini Gantt Chart */}
+                                                {(() => {
+                                                    const projectStart = new Date(project.startDate);
+                                                    const originalEndDate = new Date(project.originalEndDate || project.endDate);
+                                                    const calculatedEndDate = new Date(project.endDate);
+
+                                                    // Calculate timeline range (earliest start to latest end + buffer)
+                                                    const timelineStart = new Date(projectStart);
+                                                    const timelineEnd = new Date(Math.max(originalEndDate.getTime(), calculatedEndDate.getTime()));
+                                                    timelineEnd.setMonth(timelineEnd.getMonth() + 1); // Add buffer
+
+                                                    const totalDays = Math.max(1, (timelineEnd - timelineStart) / (1000 * 60 * 60 * 24));
+
+                                                    const getBarStyle = (start, end, color) => {
+                                                        const startOffset = Math.max(0, (start - timelineStart) / (1000 * 60 * 60 * 24));
+                                                        const duration = (end - start) / (1000 * 60 * 60 * 24);
+                                                        return {
+                                                            left: `${(startOffset / totalDays) * 100}%`,
+                                                            width: `${(duration / totalDays) * 100}%`,
+                                                            backgroundColor: color,
+                                                            height: '24px',
+                                                            borderRadius: '4px',
+                                                            position: 'absolute',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            paddingLeft: '8px',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 600,
+                                                            color: 'white',
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden'
+                                                        };
+                                                    };
+
+                                                    return (
+                                                        <div>
+                                                            {/* Standard Timeline */}
+                                                            <div style={{ marginBottom: '12px' }}>
+                                                                <div className="text-xs text-muted mb-1">📅 Standard (Original Plan)</div>
+                                                                <div style={{ position: 'relative', height: '24px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px' }}>
+                                                                    <div style={getBarStyle(projectStart, originalEndDate, 'var(--accent-primary)')}>
+                                                                        {format(projectStart, 'MMM d')} → {format(originalEndDate, 'MMM d')}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Resource First Timeline */}
+                                                            <div style={{ marginBottom: '12px' }}>
+                                                                <div className="text-xs text-muted mb-1">👥 Resource First (Calculated)</div>
+                                                                <div style={{ position: 'relative', height: '24px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px' }}>
+                                                                    <div style={getBarStyle(projectStart, calculatedEndDate, isEarly ? 'var(--success)' : isDelayed ? 'var(--danger)' : 'var(--accent-secondary)')}>
+                                                                        {format(projectStart, 'MMM d')} → {format(calculatedEndDate, 'MMM d')}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Timeline Labels */}
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                                <span>{format(timelineStart, 'MMM yyyy')}</span>
+                                                                <span>{format(timelineEnd, 'MMM yyyy')}</span>
+                                                            </div>
+
+                                                            {/* Impact Summary */}
+                                                            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px' }}>
+                                                                <div className="text-xs">
+                                                                    {daysDiff === 0 && <span className="text-muted">No change - project timeline remains the same</span>}
+                                                                    {isEarly && <span style={{ color: 'var(--success)' }}>✅ Resource First enables {Math.abs(daysDiff)} days earlier completion</span>}
+                                                                    {isDelayed && <span style={{ color: 'var(--danger)' }}>⚠️ Resource constraints push completion {daysDiff} days later</span>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     {/* 2. ALERT & TABS */}
                     {currentConflict ? (

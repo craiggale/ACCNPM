@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, TrendingUp, Settings, Users, Rocket, Target, BarChart2, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Calendar, TrendingUp, Settings, Users, Rocket, Target, BarChart2, Sun, Moon, User } from 'lucide-react';
 import TenantSwitcher from './TenantSwitcher';
 import { useTheme } from '../context/ThemeContext';
 
@@ -9,6 +9,12 @@ const Layout = ({ children }) => {
     const { theme, toggleTheme, isDark } = useTheme();
 
     const navSections = [
+        {
+            title: 'MY ACCOUNT',
+            items: [
+                { path: '/my-account', label: 'My Account', icon: User },
+            ]
+        },
         {
             title: 'WORKSPACE',
             items: [

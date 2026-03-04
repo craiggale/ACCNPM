@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { Building2 } from 'lucide-react';
 import { differenceInDays, differenceInMonths } from 'date-fns';
 import { CheckCircle2, Clock, AlertCircle, MoreHorizontal, LayoutList, BarChart2, ArrowLeft, Calendar, CheckSquare, Plus, Trash2, Edit2, Save, X, Globe, RefreshCcw, DoorOpen, Search, Filter, MoreVertical, AlertTriangle, FileText, Archive, Rocket, LayoutGrid, List } from 'lucide-react';
 import GanttChart from '../components/GanttChart';
@@ -11,11 +12,16 @@ import TaskDetailPanel from '../components/TaskDetailPanel';
 
 const ProjectDashboard = () => {
     const { projects, tasks, resources, initiatives, addTask, updateTask, deleteTask, teams, linkTaskToInitiative } = useApp();
-    const { currentUser, isDemoMode } = useAuth();
+    const { currentUser, isDemoMode, allDemoOrgs } = useAuth();
 
     // Tenant-aware filtering
     const tenantProjects = useMemo(() => {
         if (!isDemoMode || !currentUser) return projects;
+
+        // Studio Lead: Show all projects for portfolios in this studio
+        if (currentUser.isStudioLead && currentUser.studio?.clientPortfolios) {
+            return projects.filter(p => currentUser.studio.clientPortfolios.includes(p.org_id));
+        }
 
         // Filter by organization
         let filtered = projects.filter(p => p.org_id === currentUser.org_id);
@@ -32,6 +38,15 @@ const ProjectDashboard = () => {
 
         return filtered;
     }, [projects, tasks, currentUser, isDemoMode]);
+
+    // Get connected portfolios for Studio Leads
+    const studioPortfolios = useMemo(() => {
+        if (!currentUser?.isStudioLead || !currentUser.studio?.clientPortfolios) return [];
+        return currentUser.studio.clientPortfolios.map(orgId => {
+            const org = allDemoOrgs?.find(o => o.id === orgId);
+            return org || { id: orgId, name: orgId };
+        });
+    }, [currentUser]);
 
     const tenantResources = useMemo(() => {
         if (!isDemoMode || !currentUser) return resources;
@@ -1173,6 +1188,59 @@ const ProjectDashboard = () => {
 
             {viewMode === 'list' && (
                 <>
+                    {/* Studio Lead Overview */}
+                    {currentUser?.isStudioLead && studioPortfolios.length > 0 && (
+                        <div className="card" style={{
+                            marginBottom: 'var(--spacing-lg)',
+                            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.02) 100%)',
+                            border: '1px solid rgba(16, 185, 129, 0.2)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+                                <Building2 size={20} color="#10B981" />
+                                <h3 style={{ color: '#10B981', margin: 0 }}>
+                                    {currentUser.studio?.name} - Connected Portfolios
+                                </h3>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
+                                {studioPortfolios.map(portfolio => {
+                                    const portfolioProjects = tenantProjects.filter(p => p.org_id === portfolio.id);
+                                    return (
+                                        <div key={portfolio.id} style={{
+                                            padding: 'var(--spacing-md)',
+                                            backgroundColor: 'var(--bg-secondary)',
+                                            borderRadius: 'var(--radius-md)',
+                                            border: '1px solid var(--bg-tertiary)',
+                                            minWidth: '200px',
+                                            flex: '1 1 200px',
+                                            maxWidth: '300px'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
+                                                <div style={{
+                                                    width: 8, height: 8, borderRadius: '50%',
+                                                    backgroundColor: portfolio.theme || '#10B981'
+                                                }} />
+                                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                                    {portfolio.name}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 'var(--spacing-lg)', fontSize: '0.875rem' }}>
+                                                <div>
+                                                    <div className="text-muted">Projects</div>
+                                                    <div style={{ fontWeight: 600, fontSize: '1.25rem' }}>{portfolioProjects.length}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-muted">Active</div>
+                                                    <div style={{ fontWeight: 600, fontSize: '1.25rem', color: '#10B981' }}>
+                                                        {portfolioProjects.filter(p => p.status === 'In Progress').length}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                     <ProjectSummaryDashboard onFilterHealth={(health) => setHealthFilter(health === healthFilter ? 'All' : health)} />
                     {healthFilter !== 'All' && (
                         <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

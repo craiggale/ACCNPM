@@ -198,7 +198,7 @@ export const AppProvider = ({ children }) => {
       endDate: '2026-07-31',
       originalEndDate: '2026-07-15',
       type: 'Configurator',
-      scale: 'Large',
+      scale: 'Medium',
       launchDetails: [
         {
           market: 'Global',
@@ -411,27 +411,52 @@ export const AppProvider = ({ children }) => {
   ]);
 
 
-  // Mock Data - Resources (3 per portfolio = 9 total)
+  // Mock Data - Resources (organized by Studio → Portfolio)
   const [resources, setResources] = useState([
-    // Falcon Motors Team
-    { id: 1, name: 'Sarah Jenkins', role: 'Frontend Lead', team: 'Website', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-sarah', internalRate: 120, clientRate: 150 },
-    { id: 2, name: 'Mike Ross', role: '3D Artist', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-mike', internalRate: 95, clientRate: 120 },
-    { id: 3, name: 'James Wilson', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-falcon', userId: 'user-james', internalRate: 85, clientRate: 110 },
+    // === LONDON STUDIO ===
+    // Falcon Motors Team (Primary)
+    { id: 1, name: 'Sarah Jenkins', role: 'Frontend Lead', team: 'Website', capacity: 160, leave: 0, org_id: 'org-falcon', studio_id: 'studio-london', userId: 'user-sarah', isFlexible: false, internalRate: 120, clientRate: 150 },
+    { id: 2, name: 'Mike Ross', role: '3D Artist', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-falcon', studio_id: 'studio-london', userId: 'user-mike', isFlexible: false, internalRate: 95, clientRate: 120 },
+    { id: 3, name: 'James Wilson', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-falcon', studio_id: 'studio-london', userId: 'user-james', isFlexible: true, internalRate: 85, clientRate: 110 },
+    // London Flexible Pool
+    { id: 10, name: 'Olivia Martinez', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: null, studio_id: 'studio-london', userId: 'user-olivia', isFlexible: true, internalRate: 100, clientRate: 130 },
+    { id: 11, name: 'Noah Thompson', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: null, studio_id: 'studio-london', userId: 'user-noah', isFlexible: true, internalRate: 90, clientRate: 115 },
+    // ADDED: Resources to fully staff Falcon GT (Website) and Phoenix EV (Asset Production)
+    { id: 18, name: 'Emma Davis', role: 'QA', team: 'Website', capacity: 160, leave: 0, org_id: 'org-falcon', studio_id: 'studio-london', userId: 'user-emma', isFlexible: false, internalRate: 90, clientRate: 115 },
+    { id: 19, name: 'Lucas Miller', role: 'Manager', team: 'Website', capacity: 160, leave: 0, org_id: 'org-falcon', studio_id: 'studio-london', userId: 'user-lucas', isFlexible: false, internalRate: 140, clientRate: 180 },
+    { id: 20, name: 'Sophia Clark', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-falcon', studio_id: 'studio-london', userId: 'user-sophia', isFlexible: false, internalRate: 85, clientRate: 110 },
+    { id: 21, name: 'Oliver White', role: 'Manager', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-falcon', studio_id: 'studio-london', userId: 'user-oliver', isFlexible: false, internalRate: 140, clientRate: 180 },
 
-    // NexGen Health Team
-    { id: 4, name: 'Emily Chen', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-emily', internalRate: 110, clientRate: 140 },
-    { id: 5, name: 'David Lee', role: 'Product Owner', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-david', internalRate: 130, clientRate: 165 },
-    { id: 6, name: 'Anna Garcia', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-nexgen', userId: 'user-anna', internalRate: 85, clientRate: 110 },
+    // === NEW YORK STUDIO ===
+    // NexGen Health Team (Primary)
+    { id: 4, name: 'Emily Chen', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: 'org-nexgen', studio_id: 'studio-newyork', userId: 'user-emily', isFlexible: false, internalRate: 110, clientRate: 140 },
+    { id: 5, name: 'David Lee', role: 'Product Owner', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-nexgen', studio_id: 'studio-newyork', userId: 'user-david', isFlexible: false, internalRate: 130, clientRate: 165 },
+    { id: 6, name: 'Anna Garcia', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-nexgen', studio_id: 'studio-newyork', userId: 'user-anna', isFlexible: true, internalRate: 85, clientRate: 110 },
+    // New York Flexible Pool
+    { id: 12, name: 'Ethan Brown', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: null, studio_id: 'studio-newyork', userId: 'user-ethan', isFlexible: true, internalRate: 105, clientRate: 135 },
+    { id: 13, name: 'Sophia Williams', role: 'QA', team: 'Asset Production', capacity: 160, leave: 0, org_id: null, studio_id: 'studio-newyork', userId: 'user-sophia', isFlexible: true, internalRate: 75, clientRate: 100 },
+    { id: 14, name: 'Liam Johnson', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: null, studio_id: 'studio-newyork', userId: 'user-liam', isFlexible: true, internalRate: 88, clientRate: 115 },
 
-    // Vertex Tech Team
-    { id: 7, name: 'Robert Taylor', role: 'Manager', team: 'Website', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-robert', internalRate: 150, clientRate: 190 },
-    { id: 8, name: 'Lisa Wong', role: 'Developer', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-lisa', internalRate: 105, clientRate: 135 },
-    { id: 9, name: 'Tom Baker', role: 'QA', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-vertex', userId: 'user-tom', internalRate: 80, clientRate: 105 },
+    // === SINGAPORE STUDIO ===
+    // Vertex Tech Team (Primary)
+    { id: 7, name: 'Robert Taylor', role: 'Manager', team: 'Website', capacity: 160, leave: 0, org_id: 'org-vertex', studio_id: 'studio-singapore', userId: 'user-robert', isFlexible: false, internalRate: 150, clientRate: 190 },
+    { id: 8, name: 'Lisa Wong', role: 'Developer', team: 'Configurator', capacity: 160, leave: 0, org_id: 'org-vertex', studio_id: 'studio-singapore', userId: 'user-lisa', isFlexible: false, internalRate: 105, clientRate: 135 },
+    { id: 9, name: 'Tom Baker', role: 'QA', team: 'Asset Production', capacity: 160, leave: 0, org_id: 'org-vertex', studio_id: 'studio-singapore', userId: 'user-tom', isFlexible: true, internalRate: 80, clientRate: 105 },
+    // Singapore Flexible Pool
+    { id: 15, name: 'Mei Lin', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: null, studio_id: 'studio-singapore', userId: 'user-mei', isFlexible: true, internalRate: 95, clientRate: 125 },
+
+    // === BERLIN STUDIO ===
+    // Flexible Pool (supports Falcon Motors overflow via EMEA region)
+    { id: 16, name: 'Hans Mueller', role: 'Developer', team: 'Website', capacity: 160, leave: 0, org_id: null, studio_id: 'studio-berlin', userId: 'user-hans', isFlexible: true, internalRate: 100, clientRate: 130 },
+
+    // === SYDNEY STUDIO ===
+    // Flexible Pool (supports Vertex Tech overflow via APAC region)
+    { id: 17, name: 'Jack O\'Brien', role: 'Designer', team: 'Asset Production', capacity: 160, leave: 0, org_id: null, studio_id: 'studio-sydney', userId: 'user-jack', isFlexible: true, internalRate: 92, clientRate: 120 },
   ]);
 
-
-  // Mock Data - Initiatives (1 per portfolio = 3 total)
+  // Mock Data - Initiatives (multiple per portfolio for richer demo)
   const [initiatives, setInitiatives] = useState([
+    // Falcon Motors initiatives
     {
       id: 1,
       name: 'Design System Automation',
@@ -448,6 +473,33 @@ export const AppProvider = ({ children }) => {
       ]
     },
     {
+      id: 4,
+      name: 'AI-Powered QA Testing',
+      businessGoal: 'Reduce testing cycle time by 60% with automated visual regression',
+      status: 'On Track',
+      valueProposition: 'Implement AI-driven testing framework that catches UI bugs before deployment.',
+      changeType: 'New Capability',
+      startDate: '2026-01-15',
+      org_id: 'org-falcon',
+      valueMetrics: ['Brand & Experience - Quality Score (%)', 'Efficiency Gains - FTE Hour Reduction (Hrs)'],
+      impactedTasks: [
+        { taskId: 1003, taskTitle: 'QA Framework Setup', projectId: 1, valuesAdded: [{ metric: 'Brand & Experience - Quality Score (%)', value: 15 }, { metric: 'Efficiency Gains - FTE Hour Reduction (Hrs)', value: 80 }], dateLinked: '2026-02-01' }
+      ]
+    },
+    {
+      id: 5,
+      name: 'Dealer Portal Modernization',
+      businessGoal: 'Increase dealer engagement by 35% through improved UX',
+      status: 'Planning',
+      valueProposition: 'Redesign dealer portal with modern UI patterns and real-time inventory updates.',
+      changeType: 'Experience Enhancement',
+      startDate: '2026-03-01',
+      org_id: 'org-falcon',
+      valueMetrics: ['Commercial - Conversion Rate Increase (%)', 'Brand & Experience - NPS Score (%)'],
+      impactedTasks: []
+    },
+    // NexGen Health initiatives
+    {
       id: 2,
       name: 'Content Management Optimization',
       businessGoal: 'Reduce content update cycle time by 50%',
@@ -462,6 +514,35 @@ export const AppProvider = ({ children }) => {
       ]
     },
     {
+      id: 6,
+      name: 'Patient Onboarding Digitization',
+      businessGoal: 'Reduce patient onboarding time from 15 minutes to 3 minutes',
+      status: 'On Track',
+      valueProposition: 'Fully digital patient intake with pre-filled forms and e-signatures.',
+      changeType: 'Automate Task',
+      startDate: '2026-01-20',
+      org_id: 'org-nexgen',
+      valueMetrics: ['Commercial - Revenue Increase (£)', 'Brand & Experience - NPS Score (%)'],
+      impactedTasks: [
+        { taskId: 2002, taskTitle: 'Digital Forms Development', projectId: 4, valuesAdded: [{ metric: 'Commercial - Revenue Increase (£)', value: 25000 }, { metric: 'Brand & Experience - NPS Score (%)', value: 12 }], dateLinked: '2026-02-10' }
+      ]
+    },
+    {
+      id: 7,
+      name: 'Telehealth Platform Expansion',
+      businessGoal: 'Add 3 new specialist video consultation channels',
+      status: 'At Risk',
+      valueProposition: 'Enable remote specialist consultations to increase patient access.',
+      changeType: 'New Capability',
+      startDate: '2026-02-15',
+      org_id: 'org-nexgen',
+      valueMetrics: ['Commercial - Revenue Increase (£)', 'Commercial - Operational Cost Reduction (£)'],
+      impactedTasks: [
+        { taskId: 2003, taskTitle: 'Video Infrastructure', projectId: 5, valuesAdded: [{ metric: 'Commercial - Revenue Increase (£)', value: 45000 }], dateLinked: '2026-03-01' }
+      ]
+    },
+    // Vertex Tech initiatives
+    {
       id: 3,
       name: 'Performance Benchmarking Suite',
       businessGoal: 'Achieve Core Web Vitals across all platforms',
@@ -475,14 +556,190 @@ export const AppProvider = ({ children }) => {
         { taskId: 3001, taskTitle: 'Performance Optimization', projectId: 7, valuesAdded: [{ metric: 'Brand & Experience - NPS Score (%)', value: 8 }], dateLinked: '2026-04-10' },
         { taskId: 3002, taskTitle: 'Security Hardening', projectId: 8, valuesAdded: [{ metric: 'Brand & Experience - NPS Score (%)', value: 5 }], dateLinked: '2026-05-20' }
       ]
+    },
+    {
+      id: 8,
+      name: 'Cloud Cost Optimization',
+      businessGoal: 'Reduce cloud infrastructure costs by 30%',
+      status: 'Completed',
+      valueProposition: 'Right-size instances, implement auto-scaling, and optimize data transfer.',
+      changeType: 'Process Improvement',
+      startDate: '2025-11-01',
+      org_id: 'org-vertex',
+      valueMetrics: ['Commercial - Operational Cost Reduction (£)', 'Efficiency Gains - Asset Cost Reduction (£)'],
+      impactedTasks: [
+        { taskId: 3003, taskTitle: 'Infrastructure Audit', projectId: 7, valuesAdded: [{ metric: 'Commercial - Operational Cost Reduction (£)', value: 18000 }, { metric: 'Efficiency Gains - Asset Cost Reduction (£)', value: 5000 }], dateLinked: '2025-12-01' }
+      ]
+    },
+    {
+      id: 9,
+      name: 'Security Compliance Automation',
+      businessGoal: 'Achieve SOC 2 Type II certification with automated controls',
+      status: 'On Track',
+      valueProposition: 'Automated security scanning, compliance reporting, and evidence collection.',
+      changeType: 'Compliance',
+      startDate: '2026-01-10',
+      org_id: 'org-vertex',
+      valueMetrics: ['Brand & Experience - Quality Score (%)', 'Commercial - Revenue Increase (£)'],
+      impactedTasks: [
+        { taskId: 3004, taskTitle: 'Security Hardening', projectId: 8, valuesAdded: [{ metric: 'Brand & Experience - Quality Score (%)', value: 20 }], dateLinked: '2026-02-15' }
+      ]
+    },
+    {
+      id: 10,
+      name: 'API Gateway Modernization',
+      businessGoal: 'Reduce API response times by 50% and improve developer experience',
+      status: 'Planning',
+      valueProposition: 'New GraphQL gateway with improved caching and documentation.',
+      changeType: 'Technology Upgrade',
+      startDate: '2026-04-01',
+      org_id: 'org-vertex',
+      valueMetrics: ['Efficiency Gains - FTE Hour Reduction (Hrs)', 'Brand & Experience - NPS Score (%)'],
+      impactedTasks: []
     }
   ]);
 
   // Leave Requests state for My Account
   const [leaveRequests, setLeaveRequests] = useState([]);
 
+  // ============= INDUSTRY-SPECIFIC KPI DEMO DATA =============
+  // These KPIs make each portfolio feel custom-built for its industry
+  const [kpiDefinitions, setKpiDefinitions] = useState([
+    // === FALCON AUTOMOTIVE ===
+    { id: 'kpi-falcon-1', org_id: 'org-falcon', name: 'Configurator Conversion Rate', category: 'Commercial', unit: '%', direction: 'higher_better', target: 4.2, warning: 3.5, critical: 2.8, trackingMethod: 'Manual' },
+    { id: 'kpi-falcon-2', org_id: 'org-falcon', name: 'Dealer Lead Volume', category: 'Commercial', unit: 'count', direction: 'higher_better', target: 2500, warning: 2000, critical: 1500, trackingMethod: 'Manual' },
+    { id: 'kpi-falcon-3', org_id: 'org-falcon', name: 'Website Engagement Score', category: 'Experience', unit: 'score', direction: 'higher_better', target: 78, warning: 65, critical: 50, trackingMethod: 'Manual' },
+    { id: 'kpi-falcon-4', org_id: 'org-falcon', name: 'Asset Production Cycle Time', category: 'Operational', unit: 'days', direction: 'lower_better', target: 14, warning: 18, critical: 25, trackingMethod: 'Manual' },
+    { id: 'kpi-falcon-5', org_id: 'org-falcon', name: 'Brand Sentiment Score', category: 'Experience', unit: '%', direction: 'higher_better', target: 82, warning: 72, critical: 60, trackingMethod: 'Manual' },
+
+    // === GLOBAL HEALTH (Pharmaceutical) ===
+    { id: 'kpi-nexgen-1', org_id: 'org-nexgen', name: 'HCP Portal Engagement', category: 'Experience', unit: '%', direction: 'higher_better', target: 65, warning: 50, critical: 35, trackingMethod: 'Manual' },
+    { id: 'kpi-nexgen-2', org_id: 'org-nexgen', name: 'Patient Onboarding Time', category: 'Operational', unit: 'minutes', direction: 'lower_better', target: 3, warning: 6, critical: 10, trackingMethod: 'Manual' },
+    { id: 'kpi-nexgen-3', org_id: 'org-nexgen', name: 'Formulary Compliance Rate', category: 'Commercial', unit: '%', direction: 'higher_better', target: 92, warning: 85, critical: 75, trackingMethod: 'Manual' },
+    { id: 'kpi-nexgen-4', org_id: 'org-nexgen', name: 'Rep Detail Rate', category: 'Commercial', unit: '%', direction: 'higher_better', target: 78, warning: 65, critical: 50, trackingMethod: 'Manual' },
+    { id: 'kpi-nexgen-5', org_id: 'org-nexgen', name: 'Digital Content Adoption', category: 'Experience', unit: '%', direction: 'higher_better', target: 45, warning: 30, critical: 15, trackingMethod: 'Manual' },
+
+    // === ZENITH TECH ===
+    { id: 'kpi-vertex-1', org_id: 'org-vertex', name: 'API Adoption Rate', category: 'Commercial', unit: '%', direction: 'higher_better', target: 34, warning: 25, critical: 15, trackingMethod: 'Manual' },
+    { id: 'kpi-vertex-2', org_id: 'org-vertex', name: 'Developer NPS', category: 'Experience', unit: 'score', direction: 'higher_better', target: 68, warning: 50, critical: 30, trackingMethod: 'Manual' },
+    { id: 'kpi-vertex-3', org_id: 'org-vertex', name: 'Platform Uptime SLA', category: 'Operational', unit: '%', direction: 'higher_better', target: 99.95, warning: 99.5, critical: 99.0, trackingMethod: 'Manual' },
+    { id: 'kpi-vertex-4', org_id: 'org-vertex', name: 'Feature Adoption Rate', category: 'Commercial', unit: '%', direction: 'higher_better', target: 45, warning: 30, critical: 15, trackingMethod: 'Manual' },
+    { id: 'kpi-vertex-5', org_id: 'org-vertex', name: 'Time to First API Call', category: 'Experience', unit: 'minutes', direction: 'lower_better', target: 12, warning: 25, critical: 45, trackingMethod: 'Manual' },
+
+    // === URBANRETAIL ===
+    { id: 'kpi-urban-1', org_id: 'org-urbanretail', name: 'Cart Conversion Rate', category: 'Commercial', unit: '%', direction: 'higher_better', target: 3.8, warning: 3.0, critical: 2.0, trackingMethod: 'Manual' },
+    { id: 'kpi-urban-2', org_id: 'org-urbanretail', name: 'Average Order Value', category: 'Commercial', unit: '£', direction: 'higher_better', target: 125, warning: 95, critical: 65, trackingMethod: 'Manual' },
+    { id: 'kpi-urban-3', org_id: 'org-urbanretail', name: 'Customer NPS', category: 'Experience', unit: 'score', direction: 'higher_better', target: 72, warning: 55, critical: 35, trackingMethod: 'Manual' },
+    { id: 'kpi-urban-4', org_id: 'org-urbanretail', name: 'Omnichannel Engagement', category: 'Experience', unit: '%', direction: 'higher_better', target: 58, warning: 40, critical: 25, trackingMethod: 'Manual' },
+    { id: 'kpi-urban-5', org_id: 'org-urbanretail', name: 'Inventory Accuracy', category: 'Operational', unit: '%', direction: 'higher_better', target: 99.2, warning: 97, critical: 94, trackingMethod: 'Manual' }
+  ]);
+
+  // Current KPI values - some intentionally underperforming to trigger Value Gaps
+  const [portfolioKPIs, setPortfolioKPIs] = useState([
+    // Falcon - Configurator conversion DECLINING (will trigger Value Gap)
+    { id: 'val-f1', definitionId: 'kpi-falcon-1', period: '2026-02', actual: 3.1, previous: 3.8, status: 'critical' },
+    { id: 'val-f2', definitionId: 'kpi-falcon-2', period: '2026-02', actual: 2650, previous: 2400, status: 'on_track' },
+    { id: 'val-f3', definitionId: 'kpi-falcon-3', period: '2026-02', actual: 72, previous: 70, status: 'on_track' },
+    { id: 'val-f4', definitionId: 'kpi-falcon-4', period: '2026-02', actual: 16, previous: 15, status: 'warning' },
+    { id: 'val-f5', definitionId: 'kpi-falcon-5', period: '2026-02', actual: 79, previous: 80, status: 'on_track' },
+
+    // Global Health - Patient onboarding exceeding target (critical miss)
+    { id: 'val-n1', definitionId: 'kpi-nexgen-1', period: '2026-02', actual: 58, previous: 52, status: 'on_track' },
+    { id: 'val-n2', definitionId: 'kpi-nexgen-2', period: '2026-02', actual: 8.5, previous: 7.2, status: 'critical' },
+    { id: 'val-n3', definitionId: 'kpi-nexgen-3', period: '2026-02', actual: 89, previous: 88, status: 'on_track' },
+    { id: 'val-n4', definitionId: 'kpi-nexgen-4', period: '2026-02', actual: 71, previous: 68, status: 'warning' },
+    { id: 'val-n5', definitionId: 'kpi-nexgen-5', period: '2026-02', actual: 38, previous: 32, status: 'on_track' },
+
+    // Zenith - API adoption flat despite active projects
+    { id: 'val-v1', definitionId: 'kpi-vertex-1', period: '2026-02', actual: 26, previous: 25, status: 'warning' },
+    { id: 'val-v2', definitionId: 'kpi-vertex-2', period: '2026-02', actual: 52, previous: 48, status: 'warning' },
+    { id: 'val-v3', definitionId: 'kpi-vertex-3', period: '2026-02', actual: 99.92, previous: 99.88, status: 'on_track' },
+    { id: 'val-v4', definitionId: 'kpi-vertex-4', period: '2026-02', actual: 28, previous: 27, status: 'warning' },
+    { id: 'val-v5', definitionId: 'kpi-vertex-5', period: '2026-02', actual: 18, previous: 22, status: 'on_track' },
+
+    // UrbanRetail - Strong performer to contrast
+    { id: 'val-u1', definitionId: 'kpi-urban-1', period: '2026-02', actual: 4.1, previous: 3.7, status: 'on_track' },
+    { id: 'val-u2', definitionId: 'kpi-urban-2', period: '2026-02', actual: 132, previous: 118, status: 'on_track' },
+    { id: 'val-u3', definitionId: 'kpi-urban-3', period: '2026-02', actual: 68, previous: 62, status: 'on_track' },
+    { id: 'val-u4', definitionId: 'kpi-urban-4', period: '2026-02', actual: 54, previous: 48, status: 'on_track' },
+    { id: 'val-u5', definitionId: 'kpi-urban-5', period: '2026-02', actual: 98.8, previous: 98.2, status: 'warning' }
+  ]);
+
+  // Value Gaps - AI-detected discrepancies between project health and business outcomes
+  const [valueGaps, setValueGaps] = useState([
+    {
+      id: 'gap-1',
+      org_id: 'org-falcon',
+      projectId: 1, // Falcon GT Website
+      gapType: 'high_kvi_low_kpi',
+      severity: 'critical',
+      title: 'Falcon GT On Track, but Configurator Conversion declining 18%',
+      description: 'Project shows healthy execution, but the Configurator Conversion Rate has declined from 3.8% to 3.1%. Users may be abandoning before lead submission.',
+      suggestedAction: 'Review UX funnel analytics—consider A/B testing the configurator summary page. Suggest pivoting 1 developer from feature work to conversion optimization.',
+      relatedKpiIds: ['kpi-falcon-1'],
+      detectedAt: '2026-02-05T10:30:00Z'
+    },
+    {
+      id: 'gap-2',
+      org_id: 'org-nexgen',
+      projectId: 4, // Patient Portal Redesign
+      gapType: 'low_kvi_high_kpi',
+      severity: 'critical',
+      title: 'Patient Portal at risk with Onboarding Time exceeding target by 183%',
+      description: 'Patient Onboarding Time is 8.5 minutes vs 3 minute target. This correlates with the CRM Dashboard project delays impacting shared data flows.',
+      suggestedAction: 'Prioritize form simplification tasks over new feature development. Consider pulling Anna Garcia from Asset Production to accelerate.',
+      relatedKpiIds: ['kpi-nexgen-2'],
+      detectedAt: '2026-02-04T14:15:00Z'
+    },
+    {
+      id: 'gap-3',
+      org_id: 'org-vertex',
+      projectId: null, // Portfolio-wide
+      gapType: 'resource_mismatch',
+      severity: 'warning',
+      title: 'API Adoption flat despite 80% resource allocation',
+      description: 'Developer Platform using 80% of portfolio resources, but API Adoption Rate increased only 1% (25% → 26%). Current velocity may not drive adoption.',
+      suggestedAction: 'Consider pivoting 2 developers from platform features to SDK improvements and documentation. Developer NPS also below target.',
+      relatedKpiIds: ['kpi-vertex-1', 'kpi-vertex-2'],
+      detectedAt: '2026-02-03T09:00:00Z'
+    }
+  ]);
+
   const submitLeaveRequest = (request) => {
     setLeaveRequests(prev => [...prev, { ...request, id: `leave-${Date.now()}` }]);
+  };
+
+  // KPI CRUD Functions
+  const addKpiDefinition = (kpi) => {
+    const newKpi = {
+      ...kpi,
+      id: `kpi-${Date.now()}`
+    };
+    setKpiDefinitions(prev => [...prev, newKpi]);
+    return newKpi;
+  };
+
+  const updateKpiDefinition = (id, updates) => {
+    setKpiDefinitions(prev => prev.map(kpi =>
+      kpi.id === id ? { ...kpi, ...updates } : kpi
+    ));
+  };
+
+  const deleteKpiDefinition = (id) => {
+    setKpiDefinitions(prev => prev.filter(kpi => kpi.id !== id));
+    // Also remove associated values
+    setPortfolioKPIs(prev => prev.filter(v => v.definitionId !== id));
+  };
+
+  const updateKpiValue = (definitionId, value) => {
+    setPortfolioKPIs(prev => {
+      const existing = prev.find(v => v.definitionId === definitionId);
+      if (existing) {
+        return prev.map(v => v.definitionId === definitionId ? { ...v, ...value } : v);
+      } else {
+        return [...prev, { id: `val-${Date.now()}`, definitionId, period: '2026-02', ...value }];
+      }
+    });
   };
 
 
@@ -1131,6 +1388,16 @@ export const AppProvider = ({ children }) => {
     setMarkets(prev => prev.filter(m => m !== marketName));
   };
 
+  const getRoleForTask = (title) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('dev') || titleLower.includes('program') || titleLower.includes('logic') || titleLower.includes('optimization') || titleLower.includes('cms') || titleLower.includes('security') || titleLower.includes('audit')) return 'Developer';
+    if (titleLower.includes('design') || titleLower.includes('ui') || titleLower.includes('ux') || titleLower.includes('creative') || titleLower.includes('copy') || titleLower.includes('localization')) return 'Designer';
+    if (titleLower.includes('3d') || titleLower.includes('asset') || titleLower.includes('cgi') || titleLower.includes('video') || titleLower.includes('image') || titleLower.includes('production') || titleLower.includes('retouching') || titleLower.includes('spins')) return '3D Artist';
+    if (titleLower.includes('qa') || titleLower.includes('test') || titleLower.includes('uat') || titleLower.includes('support')) return 'QA';
+    if (titleLower.includes('strategy') || titleLower.includes('launch') || titleLower.includes('rollout') || titleLower.includes('brief') || titleLower.includes('global')) return 'Manager';
+    return 'Developer'; // Default
+  };
+
   const autoAssignTasks = () => {
     let updatedTasks = tasks.map(t => ({ ...t, assignee: null }));
     let resourceUsage = resources.map(r => ({ ...r, used: 0 }));
@@ -1153,13 +1420,17 @@ export const AppProvider = ({ children }) => {
       return r.org_id !== currentOrgId;
     });
 
-    // Build global resource pool with simulated allocation data
-    const globalPool = resourceUsage.map(r => ({
-      ...r,
-      isPrimary: r.org_id === currentOrgId,
-      allocation: r.org_id === currentOrgId ? 100 : 50, // Simulated: primary=100%, shared=50%
-      availableCapacity: parseInt(r.capacity) - (parseInt(r.leave) || 0) - r.used
-    }));
+    // Build global resource pool with calculated allocation based on actual utilization
+    const globalPool = resourceUsage.map(r => {
+      const capacity = parseInt(r.capacity) - (parseInt(r.leave) || 0);
+      const utilization = capacity > 0 ? Math.round((r.used / capacity) * 100) : 0;
+      return {
+        ...r,
+        isPrimary: r.org_id === currentOrgId,
+        allocation: utilization, // Actual utilization percentage
+        availableCapacity: capacity - r.used
+      };
+    });
 
     updatedTasks.forEach(task => {
       const project = projects.find(p => p.id === task.projectId);
@@ -1188,6 +1459,7 @@ export const AppProvider = ({ children }) => {
         (parseInt(r.capacity) - (parseInt(r.leave) || 0) - r.used) >= estimate
       );
 
+
       if (bestSharedResource) {
         task.assignee = bestSharedResource.id;
         bestSharedResource.used += estimate;
@@ -1196,6 +1468,11 @@ export const AppProvider = ({ children }) => {
         if (poolResource) poolResource.used += estimate;
 
         // Note: this is a shared resource assignment - include portfolio details
+        // Calculate suggested split based on task hours vs resource capacity
+        const resourceCapacity = parseInt(bestSharedResource.capacity) - (parseInt(bestSharedResource.leave) || 0);
+        const suggestedSplit = resourceCapacity > 0 ? Math.round((estimate / resourceCapacity) * 100) : 10;
+        const currentUtilization = resourceCapacity > 0 ? Math.round((bestSharedResource.used / resourceCapacity) * 100) : 0;
+
         gaps.push({
           taskId: task.id,
           taskTitle: task.title,
@@ -1203,13 +1480,15 @@ export const AppProvider = ({ children }) => {
           requiredTeam: requiredTeam,
           estimate: estimate,
           assignedTo: bestSharedResource.name,
+          resourceRole: bestSharedResource.role,
+          internalRate: bestSharedResource.internalRate,
           resourceId: bestSharedResource.id,
           primaryPortfolio: getPortfolioName(bestSharedResource.org_id),
           primaryPortfolioId: bestSharedResource.org_id,
           targetPortfolio: getPortfolioName(currentOrgId),
           targetPortfolioId: currentOrgId,
-          currentAllocation: bestSharedResource.allocation || 70, // Default if not set
-          suggestedSplit: 30, // Suggested allocation for target portfolio
+          currentAllocation: 100 - currentUtilization, // Available capacity in primary
+          suggestedSplit: Math.min(suggestedSplit, 100 - currentUtilization), // Don't exceed available
           reason: 'Assigned to Shared Resource',
           type: 'shared_assignment'
         });
@@ -1252,6 +1531,7 @@ export const AppProvider = ({ children }) => {
         projectName: project.name,
         requiredTeam: requiredTeam,
         estimate: estimate,
+        resourceRole: getRoleForTask(task.title), // INFERRED ROLE
         reason: primaryResources.some(r => r.team === requiredTeam)
           ? 'Primary Resources at Capacity'
           : 'No Primary Team Members',
@@ -1280,6 +1560,13 @@ export const AppProvider = ({ children }) => {
   const getPortfolioName = (orgId) => {
     const org = authContext?.allDemoOrgs?.find(o => o.id === orgId);
     return org?.name || 'Unknown Portfolio';
+  };
+
+  // Update specific fields on a project (used by AI Orchestrator)
+  const updateProjectFields = (projectId, changes) => {
+    setProjects(prev => prev.map(p =>
+      p.id === projectId ? { ...p, ...changes } : p
+    ));
   };
 
 
@@ -1398,7 +1685,18 @@ export const AppProvider = ({ children }) => {
       linkTaskToInitiative,
       unlinkTaskFromInitiative,
       leaveRequests,
-      submitLeaveRequest
+      submitLeaveRequest,
+      // Business Outcomes KPI data
+      kpiDefinitions,
+      portfolioKPIs,
+      valueGaps,
+      addKpiDefinition,
+      updateKpiDefinition,
+      deleteKpiDefinition,
+      updateKpiValue,
+      // AI Orchestrator support
+      updateProjectFields,
+      setProjects
     }}>
       {children}
     </AppContext.Provider>

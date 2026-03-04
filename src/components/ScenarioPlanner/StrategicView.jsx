@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import GanttChart from '../GanttChart';
 // Removed Recharts imports as they are now in PrimaryForecastChart
-import { Plus, Trash2, Zap, ArrowRight, BrainCircuit, RefreshCw, CheckCircle, Play, Filter, LayoutList, Calendar, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { addMonths, format, startOfMonth, endOfMonth, differenceInDays, subWeeks } from 'date-fns';
+import { Plus, Trash2, Zap, ArrowRight, BrainCircuit, RefreshCw, CheckCircle, Play, Filter, LayoutList, Calendar, BarChart2, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
+import { addMonths, format, startOfMonth, endOfMonth, differenceInDays, subWeeks, isValid } from 'date-fns';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { ResolutionEngine, getRoleDistribution, normalizeRole } from '../../utils/ResolutionEngine';
@@ -11,23 +11,38 @@ import NewProjectPane from '../NewProjectPane';
 // New Components
 import PrimaryForecastChart from './PrimaryForecastChart';
 import BottleneckAlert from './BottleneckAlert';
-import ScenarioTabs from './ScenarioTabs';
+import CapacityPlayground from './CapacityPlayground';
 
 const StrategicView = () => {
     console.log("StrategicView Rendering...");
-    const { projects: allProjects = [], resources: allResources = [], addProject } = useApp();
+    const { projects: allProjects = [], resources: allResources = [], tasks: allTasks = [], addProject } = useApp();
     const { currentUser, isDemoMode } = useAuth();
 
     // Tenant-aware filtering
     const liveProjects = useMemo(() => {
         if (!isDemoMode || !currentUser) return allProjects;
+
+        // Studio Lead: Show all projects for portfolios in this studio
+        if (currentUser.isStudioLead && currentUser.studio) {
+            return allProjects.filter(p => currentUser.studio.clientPortfolios?.includes(p.org_id));
+        }
+
         return allProjects.filter(p => p.org_id === currentUser.org_id);
     }, [allProjects, currentUser, isDemoMode]);
 
     const liveResources = useMemo(() => {
         if (!isDemoMode || !currentUser) return allResources;
+
+        // Studio Lead: Show all resources in this studio (including flex pool)
+        if (currentUser.isStudioLead) {
+            return allResources.filter(r => r.studio_id === currentUser.current_studio_id);
+        }
+
         return allResources.filter(r => r.org_id === currentUser.org_id);
     }, [allResources, currentUser, isDemoMode]);
+
+    // Global resources: all resources across all portfolios (for reference line)
+    const globalResources = useMemo(() => allResources, [allResources]);
 
     // --- Sandbox State ---
     const [draftProjects, setDraftProjects] = useState([]);
@@ -39,11 +54,12 @@ const StrategicView = () => {
     const [forecastView, setForecastView] = useState('Resource'); // 'Resource', 'Timeline', 'Priority'
     const [chartFocus, setChartFocus] = useState('Demand'); // 'Demand', 'Capacity'
     const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
-    const [planningMode, setPlanningMode] = useState('Standard'); // 'Standard', 'ResourceFirst'
+    const [planningMode, setPlanningMode] = useState('Template'); // 'Template', 'ResourceScheduled'
     const [selectedTimelineProject, setSelectedTimelineProject] = useState(null); // For expanded Gantt view
 
     // NEW: Comparison State
     const [activeSolutionId, setActiveSolutionId] = useState('current'); // 'current' or solution.id
+    const [isPlaygroundMaximized, setIsPlaygroundMaximized] = useState(false);
 
     // --- Comparison State Calculation ---
     // 1. Base State (Before AI Levers)
@@ -76,9 +92,9 @@ const StrategicView = () => {
         });
 
         // --- Resource-Driven Scheduling ---
-        // Only apply in "ResourceFirst" mode
-        // Resource First = calculate EARLIEST possible completion based on available capacity
-        if (planningMode === 'ResourceFirst') {
+        // Only apply in "ResourceScheduled" mode
+        // ResourceScheduled = calculate adjusted completion based on when resources are available
+        if (planningMode === 'ResourceScheduled') {
             // 1. Get projected resources (Live + Added via Solutions)
             let currentResources = [...liveResources];
             auditLog.forEach(solution => {
@@ -92,57 +108,41 @@ const StrategicView = () => {
             const fixedProjects = currentProjects.filter(p => !p.isResourceDriven && p.status !== 'Paused');
             const flexibleProjects = currentProjects.filter(p => p.isResourceDriven && p.status !== 'Paused');
 
+            // IMPORTANT: Preserve original end dates BEFORE calculating new ones
+            flexibleProjects.forEach(flexProj => {
+                if (!flexProj.originalEndDate) {
+                    flexProj.originalEndDate = flexProj.endDate;
+                }
+            });
+
             flexibleProjects.forEach(flexProj => {
                 const keyRole = flexProj.type === 'Asset Production' ? 'Designer' : 'Developer';
-                const keyDist = getRoleDistribution(flexProj.type || 'Website')[keyRole] || 0.5;
 
                 // Calculate Total Capacity for Key Role (Monthly)
                 const roleCapacity = currentResources
                     .filter(r => normalizeRole(r.role) === keyRole)
-                    .reduce((sum, r) => sum + parseInt(r.capacity), 0);
+                    .reduce((sum, r) => sum + parseInt(r.capacity || 160), 0);
 
-                let remainingEffort = parseInt(flexProj.totalEffort || 960);
+                // For Resource First: calculate based on FULL available capacity
+                // Not constrained by fixed project commitments - this is the "ideal" scenario
+                const totalEffort = parseInt(flexProj.totalEffort || 960);
+
+                // Simple calculation: how many months to complete with full capacity?
+                // Each month we can burn through roleCapacity hours
+                const monthsNeeded = Math.ceil(totalEffort / Math.max(1, roleCapacity));
+
                 let currentMonth = new Date(flexProj.startDate);
-
-                // Calculate how fast we can burn through the work with FULL available capacity
-                let safety = 0;
-                while (remainingEffort > 1 && safety < 60) {
-                    const monthStart = startOfMonth(currentMonth);
-                    const monthEnd = endOfMonth(currentMonth);
-
-                    // Calculate Demand from Fixed Projects for this month
-                    let committedDemand = 0;
-                    fixedProjects.forEach(p => {
-                        const pStart = new Date(p.startDate);
-                        const pEnd = new Date(p.endDate);
-                        if (pStart <= monthEnd && pEnd >= monthStart) {
-                            let val = 320; // Medium
-                            if (p.scale === 'Small') val = 160;
-                            if (p.scale === 'Large') val = 640;
-                            const ratio = getRoleDistribution(p.type || 'Website')[keyRole] || 0;
-                            committedDemand += (val * ratio);
-                        }
-                    });
-
-                    // Available capacity = Total - Committed to fixed projects
-                    const available = Math.max(0, roleCapacity - committedDemand);
-
-                    // In Resource First mode, we can use ALL available capacity (not capped by project size)
-                    // This allows projects to finish faster when there's spare capacity
-                    const burn = available * keyDist; // Effective burn on this project
-
-                    if (burn > 0 && keyDist > 0) {
-                        const totalBurn = burn / keyDist;
-                        remainingEffort -= totalBurn;
-                    }
-
+                for (let i = 0; i < monthsNeeded; i++) {
                     currentMonth = addMonths(currentMonth, 1);
-                    safety++;
                 }
 
-                // After loop exits, currentMonth is one past completion
+                // Set the new earlier end date
                 const completionMonth = addMonths(currentMonth, -1);
-                flexProj.endDate = format(endOfMonth(completionMonth), 'yyyy-MM-dd');
+                if (isValid(completionMonth)) {
+                    flexProj.endDate = format(endOfMonth(completionMonth), 'yyyy-MM-dd');
+                } else {
+                    flexProj.endDate = flexProj.startDate; // Fallback
+                }
             });
         }
 
@@ -209,6 +209,8 @@ const StrategicView = () => {
         // NOTE: "Base" in the chart context now means "Current Scenario" (before applying the specific tab solution)
         const baseTotalCapacity = getCap(currentSandboxResources);
         const projectedTotalCapacity = getCap(previewResources);
+        // Global capacity: all resources across all portfolios
+        const globalTotalCapacity = getCap(globalResources);
 
         const getDemandAndCost = (projList, dateRange) => {
             const [start, end] = dateRange;
@@ -259,6 +261,8 @@ const StrategicView = () => {
             const baseMetrics = getDemandAndCost(currentSandboxProjects, range);
             const projectedMetrics = getDemandAndCost(previewProjects, range);
 
+            const totalDemand = projectedMetrics.fixedDemand + projectedMetrics.flexibleDemand;
+
             return {
                 name: label,
                 baseDemand: baseMetrics.demand,
@@ -266,18 +270,22 @@ const StrategicView = () => {
                 // Split for stacked charts
                 fixedDemand: projectedMetrics.fixedDemand,
                 flexibleDemand: projectedMetrics.flexibleDemand,
+                // NEW: Split at capacity line for cleaner visualization
+                demandWithinCapacity: Math.min(totalDemand, projectedTotalCapacity),
+                demandOverflow: Math.max(0, totalDemand - projectedTotalCapacity),
 
                 baseCost: baseMetrics.cost,
                 projectedCost: projectedMetrics.cost,
                 baseCapacity: baseTotalCapacity,
                 projectedCapacity: projectedTotalCapacity,
-                unusedCapacity: Math.max(0, projectedTotalCapacity - (projectedMetrics.fixedDemand + projectedMetrics.flexibleDemand))
+                globalCapacity: globalTotalCapacity,
+                unusedCapacity: Math.max(0, projectedTotalCapacity - totalDemand)
             };
         });
 
         return { chartData: data, previewProjects };
 
-    }, [currentSandboxProjects, currentSandboxResources, currentSolutions, activeSolutionId, viewRole]);
+    }, [currentSandboxProjects, currentSandboxResources, currentSolutions, activeSolutionId, viewRole, globalResources]);
 
 
     // --- Auto-Focus Logic ---
@@ -319,6 +327,15 @@ const StrategicView = () => {
         setActiveSolutionId('current'); // Reset tabs
     };
 
+    const applyPlaygroundChanges = (changes) => {
+        const newEntries = changes.map(change => ({
+            ...change,
+            id: change.id || `sol-${Date.now()}`,
+            appliedAt: new Date()
+        }));
+        setAuditLog([...auditLog, ...newEntries]);
+    };
+
     const undoSolution = (solutionId) => {
         setAuditLog(auditLog.filter(s => s.id !== solutionId));
     };
@@ -347,7 +364,7 @@ const StrategicView = () => {
                         <span className="text-xs text-muted">Planning:</span>
                         <div style={{ display: 'flex', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', padding: '3px', border: '2px solid var(--bg-tertiary)' }}>
                             <button
-                                onClick={() => setPlanningMode('Standard')}
+                                onClick={() => setPlanningMode('Template')}
                                 style={{
                                     padding: '6px 16px',
                                     borderRadius: 'var(--radius-sm)',
@@ -355,15 +372,15 @@ const StrategicView = () => {
                                     fontWeight: 600,
                                     border: 'none',
                                     cursor: 'pointer',
-                                    backgroundColor: planningMode === 'Standard' ? 'var(--accent-primary)' : 'transparent',
-                                    color: planningMode === 'Standard' ? 'white' : 'var(--text-muted)',
+                                    backgroundColor: planningMode === 'Template' ? 'var(--accent-primary)' : 'transparent',
+                                    color: planningMode === 'Template' ? 'white' : 'var(--text-muted)',
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                📅 Standard
+                                📋 Template
                             </button>
                             <button
-                                onClick={() => setPlanningMode('ResourceFirst')}
+                                onClick={() => setPlanningMode('ResourceScheduled')}
                                 style={{
                                     padding: '6px 16px',
                                     borderRadius: 'var(--radius-sm)',
@@ -371,12 +388,12 @@ const StrategicView = () => {
                                     fontWeight: 600,
                                     border: 'none',
                                     cursor: 'pointer',
-                                    backgroundColor: planningMode === 'ResourceFirst' ? 'var(--accent-secondary)' : 'transparent',
-                                    color: planningMode === 'ResourceFirst' ? 'white' : 'var(--text-muted)',
+                                    backgroundColor: planningMode === 'ResourceScheduled' ? 'var(--accent-secondary)' : 'transparent',
+                                    color: planningMode === 'ResourceScheduled' ? 'white' : 'var(--text-muted)',
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                👥 Resource First
+                                👤 Resource Scheduled
                             </button>
                         </div>
                     </div>
@@ -543,11 +560,11 @@ const StrategicView = () => {
                             <span className="text-xs" style={{
                                 padding: '2px 8px',
                                 borderRadius: 'var(--radius-sm)',
-                                backgroundColor: planningMode === 'ResourceFirst' ? 'var(--accent-secondary)' : 'var(--bg-tertiary)',
-                                color: planningMode === 'ResourceFirst' ? 'white' : 'var(--text-muted)',
+                                backgroundColor: planningMode === 'ResourceScheduled' ? 'var(--accent-secondary)' : 'var(--bg-tertiary)',
+                                color: planningMode === 'ResourceScheduled' ? 'white' : 'var(--text-muted)',
                                 marginLeft: 'auto'
                             }}>
-                                {planningMode === 'ResourceFirst' ? 'Resource Driven' : 'Standard'}
+                                {planningMode === 'ResourceScheduled' ? 'Resource Scheduled' : 'Template View'}
                             </span>
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -587,7 +604,7 @@ const StrategicView = () => {
                                                 </div>
                                                 <div className="text-xs text-muted">
                                                     {project.type} • {project.scale}
-                                                    {isResourceDriven && <span style={{ color: 'var(--accent-secondary)', marginLeft: '0.5rem' }}>• Resource Driven</span>}
+                                                    {isResourceDriven && <span style={{ color: 'var(--accent-secondary)', marginLeft: '0.5rem' }}>• Adjustable</span>}
                                                 </div>
                                             </div>
                                             <div className="text-sm" style={{ textAlign: 'center' }}>
@@ -600,7 +617,7 @@ const StrategicView = () => {
                                             <div className="text-sm" style={{ textAlign: 'center', fontWeight: 600 }}>
                                                 <div className="text-xs text-muted">Calculated</div>
                                                 <div style={{ color: isDelayed ? 'var(--danger)' : isEarly ? 'var(--success)' : 'inherit' }}>
-                                                    {format(calculatedEnd, 'MMM d, yyyy')}
+                                                    {isValid(calculatedEnd) ? format(calculatedEnd, 'MMM d, yyyy') : 'Pending'}
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: 'right' }}>
@@ -640,6 +657,10 @@ const StrategicView = () => {
                                                     const originalEndDate = new Date(project.originalEndDate || project.endDate);
                                                     const calculatedEndDate = new Date(project.endDate);
 
+                                                    if (!isValid(projectStart) || !isValid(originalEndDate) || !isValid(calculatedEndDate)) {
+                                                        return <div className="text-sm text-muted p-4">Timeline data incomplete</div>;
+                                                    }
+
                                                     // Calculate timeline range (earliest start to latest end + buffer)
                                                     const timelineStart = new Date(projectStart);
                                                     const timelineEnd = new Date(Math.max(originalEndDate.getTime(), calculatedEndDate.getTime()));
@@ -670,9 +691,9 @@ const StrategicView = () => {
 
                                                     return (
                                                         <div>
-                                                            {/* Standard Timeline */}
+                                                            {/* Template Timeline */}
                                                             <div style={{ marginBottom: '12px' }}>
-                                                                <div className="text-xs text-muted mb-1">📅 Standard (Original Plan)</div>
+                                                                <div className="text-xs text-muted mb-1">📋 Template (Before Resource Assignment)</div>
                                                                 <div style={{ position: 'relative', height: '24px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px' }}>
                                                                     <div style={getBarStyle(projectStart, originalEndDate, 'var(--accent-primary)')}>
                                                                         {format(projectStart, 'MMM d')} → {format(originalEndDate, 'MMM d')}
@@ -680,9 +701,9 @@ const StrategicView = () => {
                                                                 </div>
                                                             </div>
 
-                                                            {/* Resource First Timeline */}
+                                                            {/* Resource Scheduled Timeline */}
                                                             <div style={{ marginBottom: '12px' }}>
-                                                                <div className="text-xs text-muted mb-1">👥 Resource First (Calculated)</div>
+                                                                <div className="text-xs text-muted mb-1">👤 Resource Scheduled (Adjusted for Availability)</div>
                                                                 <div style={{ position: 'relative', height: '24px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px' }}>
                                                                     <div style={getBarStyle(projectStart, calculatedEndDate, isEarly ? 'var(--success)' : isDelayed ? 'var(--danger)' : 'var(--accent-secondary)')}>
                                                                         {format(projectStart, 'MMM d')} → {format(calculatedEndDate, 'MMM d')}
@@ -704,6 +725,420 @@ const StrategicView = () => {
                                                                     {isDelayed && <span style={{ color: 'var(--danger)' }}>⚠️ Resource constraints push completion {daysDiff} days later</span>}
                                                                 </div>
                                                             </div>
+
+                                                            {/* Detailed Task Breakdown */}
+                                                            {(() => {
+                                                                const projectTasks = allTasks.filter(t => t.projectId === project.id);
+                                                                const keyRole = project.type === 'Asset Production' ? 'Designer' : 'Developer';
+                                                                const roleResources = liveResources.filter(r => normalizeRole(r.role) === keyRole);
+
+                                                                // Calculate monthly capacity available
+                                                                const totalCapacity = roleResources.reduce((sum, r) => sum + parseInt(r.capacity || 160), 0);
+
+                                                                // Estimate task distribution
+                                                                const totalEffort = project.totalEffort || 960;
+                                                                const standardMonths = Math.ceil((new Date(project.originalEndDate || project.endDate) - new Date(project.startDate)) / (1000 * 60 * 60 * 24 * 30));
+                                                                const resourceFirstMonths = Math.ceil((calculatedEndDate - projectStart) / (1000 * 60 * 60 * 24 * 30));
+
+                                                                const standardMonthlyEffort = Math.round(totalEffort / Math.max(1, standardMonths));
+                                                                const resourceFirstMonthlyEffort = Math.round(totalEffort / Math.max(1, resourceFirstMonths));
+
+                                                                return (
+                                                                    <div style={{ marginTop: '16px' }}>
+                                                                        <h5 className="text-sm font-bold mb-2" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                            📊 Resource Allocation Breakdown
+                                                                        </h5>
+
+                                                                        {/* Key Role Resources */}
+                                                                        <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px' }}>
+                                                                            <div className="text-xs text-muted mb-1">Key Role: {keyRole}s ({totalCapacity}h/month capacity)</div>
+                                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                                                {roleResources.map(r => (
+                                                                                    <span key={r.id} style={{
+                                                                                        padding: '2px 8px',
+                                                                                        backgroundColor: 'var(--accent-primary)',
+                                                                                        color: 'white',
+                                                                                        borderRadius: '12px',
+                                                                                        fontSize: '0.7rem'
+                                                                                    }}>
+                                                                                        {r.name} ({r.capacity}h)
+                                                                                    </span>
+                                                                                ))}
+                                                                                {roleResources.length === 0 && <span className="text-xs text-muted">No {keyRole}s available</span>}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Comparison Table */}
+                                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                                                            {/* Template Approach */}
+                                                                            <div style={{ padding: '12px', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderRadius: '8px', border: '1px solid var(--accent-primary)' }}>
+                                                                                <div className="text-xs font-bold mb-2" style={{ color: 'var(--accent-primary)' }}>📋 Template Plan</div>
+                                                                                <div className="text-xs" style={{ marginBottom: '8px' }}>
+                                                                                    <div>Duration: <strong>{standardMonths} months</strong></div>
+                                                                                    <div>Effort/month: <strong>~{standardMonthlyEffort}h</strong></div>
+                                                                                    <div>Total: <strong>{totalEffort}h</strong></div>
+                                                                                </div>
+                                                                                <div className="text-xs text-muted">
+                                                                                    Timeline based on project template (before resources assigned)
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* Resource Scheduled Approach */}
+                                                                            <div style={{ padding: '12px', backgroundColor: isEarly ? 'rgba(16, 185, 129, 0.1)' : 'rgba(139, 92, 246, 0.1)', borderRadius: '8px', border: `1px solid ${isEarly ? 'var(--success)' : 'var(--accent-secondary)'}` }}>
+                                                                                <div className="text-xs font-bold mb-2" style={{ color: isEarly ? 'var(--success)' : 'var(--accent-secondary)' }}>👤 Resource Scheduled</div>
+                                                                                <div className="text-xs" style={{ marginBottom: '8px' }}>
+                                                                                    <div>Duration: <strong>{resourceFirstMonths} months</strong></div>
+                                                                                    <div>Effort/month: <strong>~{resourceFirstMonthlyEffort}h</strong></div>
+                                                                                    <div>Available: <strong>{totalCapacity}h/month</strong></div>
+                                                                                </div>
+                                                                                <div className="text-xs text-muted">
+                                                                                    {isEarly
+                                                                                        ? `With ${totalCapacity}h capacity, work completes ${Math.abs(daysDiff)} days faster`
+                                                                                        : 'Work scheduled based on actual resource availability'}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Time Savings Breakdown */}
+                                                                        {isEarly && (
+                                                                            <div style={{ marginTop: '12px', padding: '12px', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', border: '1px solid var(--success)' }}>
+                                                                                <div className="text-xs font-bold mb-2" style={{ color: 'var(--success)' }}>💰 Time Savings Analysis</div>
+                                                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
+                                                                                    <div>
+                                                                                        <div className="text-xs text-muted">Days Saved</div>
+                                                                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--success)' }}>{Math.abs(daysDiff)}</div>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <div className="text-xs text-muted">Hours Freed</div>
+                                                                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--success)' }}>{Math.round(Math.abs(daysDiff) * 8 * 0.6)}</div>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <div className="text-xs text-muted">Months Earlier</div>
+                                                                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--success)' }}>{(Math.abs(daysDiff) / 30).toFixed(1)}</div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Visual Task Gantt Comparison */}
+                                                                        {projectTasks.length > 0 && (
+                                                                            <div style={{ marginTop: '16px' }}>
+                                                                                <div className="text-sm font-bold mb-2">📊 Task Schedule Comparison</div>
+
+                                                                                {/* Gantt Chart Container */}
+                                                                                <div style={{
+                                                                                    display: 'grid',
+                                                                                    gridTemplateColumns: '1fr 1fr',
+                                                                                    gap: '16px',
+                                                                                    marginBottom: '12px'
+                                                                                }}>
+                                                                                    {/* Template (Sequential) */}
+                                                                                    <div style={{
+                                                                                        backgroundColor: 'var(--bg-tertiary)',
+                                                                                        borderRadius: '8px',
+                                                                                        padding: '12px',
+                                                                                        border: '1px solid var(--accent-primary)'
+                                                                                    }}>
+                                                                                        <div className="text-xs font-bold mb-2" style={{ color: 'var(--accent-primary)' }}>
+                                                                                            📋 Template (Sequential)
+                                                                                        </div>
+                                                                                        <div className="text-xs text-muted mb-2">Tasks executed one after another</div>
+                                                                                        {(() => {
+                                                                                            // Simulate sequential task scheduling
+                                                                                            let templateTotal = totalEffort;
+                                                                                            const templateMonthlyBurn = standardMonthlyEffort || 69;
+
+                                                                                            return projectTasks.slice(0, 4).map((task, idx) => {
+                                                                                                const taskHours = task.estimate || 40;
+                                                                                                const taskWeeks = Math.ceil(taskHours / 20); // ~20h per week
+                                                                                                const startWeek = projectTasks.slice(0, idx).reduce((sum, t) => sum + Math.ceil((t.estimate || 40) / 20), 0);
+
+                                                                                                return (
+                                                                                                    <div key={task.id} style={{ marginBottom: '6px' }}>
+                                                                                                        <div className="text-xs" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                                                                                            <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
+                                                                                                            <span className="text-muted">{taskHours}h</span>
+                                                                                                        </div>
+                                                                                                        <div style={{ position: 'relative', height: '16px', backgroundColor: 'var(--bg-secondary)', borderRadius: '3px' }}>
+                                                                                                            <div style={{
+                                                                                                                position: 'absolute',
+                                                                                                                left: `${Math.min(startWeek * 3, 70)}%`,
+                                                                                                                width: `${Math.min(taskWeeks * 3, 100 - Math.min(startWeek * 3, 70))}%`,
+                                                                                                                height: '100%',
+                                                                                                                backgroundColor: 'var(--accent-primary)',
+                                                                                                                borderRadius: '3px',
+                                                                                                                opacity: 0.7
+                                                                                                            }} />
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                );
+                                                                                            });
+                                                                                        })()}
+                                                                                        {projectTasks.length > 4 && (
+                                                                                            <div className="text-xs text-muted">+ {projectTasks.length - 4} more tasks...</div>
+                                                                                        )}
+                                                                                        <div className="text-xs text-muted mt-2" style={{ borderTop: '1px solid var(--bg-secondary)', paddingTop: '6px' }}>
+                                                                                            ⏱️ Total: <strong>{standardMonths} months</strong>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {/* Resource Scheduled (Parallel) */}
+                                                                                    <div style={{
+                                                                                        backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                                                                        borderRadius: '8px',
+                                                                                        padding: '12px',
+                                                                                        border: '1px solid var(--success)'
+                                                                                    }}>
+                                                                                        <div className="text-xs font-bold mb-2" style={{ color: 'var(--success)' }}>
+                                                                                            👤 Resource Scheduled (Parallel)
+                                                                                        </div>
+                                                                                        <div className="text-xs text-muted mb-2">Tasks distributed across {roleResources.length} {keyRole}s</div>
+                                                                                        {(() => {
+                                                                                            // Simulate parallel task scheduling across resources
+                                                                                            return projectTasks.slice(0, 4).map((task, idx) => {
+                                                                                                const taskHours = task.estimate || 40;
+                                                                                                const assignedResource = roleResources[idx % roleResources.length];
+                                                                                                const taskWeeks = Math.ceil(taskHours / 40); // More hours per week with dedicated resource
+                                                                                                const startWeek = Math.floor(idx / roleResources.length) * taskWeeks;
+
+                                                                                                return (
+                                                                                                    <div key={task.id} style={{ marginBottom: '6px' }}>
+                                                                                                        <div className="text-xs" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                                                                                            <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
+                                                                                                            <span style={{
+                                                                                                                backgroundColor: 'var(--success)',
+                                                                                                                color: 'white',
+                                                                                                                padding: '1px 4px',
+                                                                                                                borderRadius: '3px',
+                                                                                                                fontSize: '0.6rem'
+                                                                                                            }}>
+                                                                                                                {assignedResource?.name?.split(' ')[0] || 'Resource ' + ((idx % roleResources.length) + 1)}
+                                                                                                            </span>
+                                                                                                        </div>
+                                                                                                        <div style={{ position: 'relative', height: '16px', backgroundColor: 'var(--bg-secondary)', borderRadius: '3px' }}>
+                                                                                                            <div style={{
+                                                                                                                position: 'absolute',
+                                                                                                                left: `${startWeek * 8}%`,
+                                                                                                                width: `${Math.min(taskWeeks * 8, 50)}%`,
+                                                                                                                height: '100%',
+                                                                                                                backgroundColor: 'var(--success)',
+                                                                                                                borderRadius: '3px',
+                                                                                                                opacity: 0.8
+                                                                                                            }} />
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                );
+                                                                                            });
+                                                                                        })()}
+                                                                                        {projectTasks.length > 4 && (
+                                                                                            <div className="text-xs text-muted">+ {projectTasks.length - 4} more tasks...</div>
+                                                                                        )}
+                                                                                        <div className="text-xs mt-2" style={{ borderTop: '1px solid rgba(16, 185, 129, 0.2)', paddingTop: '6px', color: 'var(--success)' }}>
+                                                                                            ⏱️ Total: <strong>{resourceFirstMonths} months</strong> ✅
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {/* Dependency Analysis */}
+                                                                                <div style={{
+                                                                                    padding: '10px',
+                                                                                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                                                                    borderRadius: '6px',
+                                                                                    border: '1px solid var(--warning)',
+                                                                                    marginBottom: '8px'
+                                                                                }}>
+                                                                                    <div className="text-xs font-bold mb-2" style={{ color: 'var(--warning)' }}>
+                                                                                        ⛓️ Task Dependency Check
+                                                                                    </div>
+                                                                                    {(() => {
+                                                                                        const tasksWithDeps = projectTasks.filter(t => t.predecessorId);
+                                                                                        const independentTasks = projectTasks.filter(t => !t.predecessorId);
+
+                                                                                        return (
+                                                                                            <div>
+                                                                                                <div className="text-xs text-muted mb-2">
+                                                                                                    <strong>{independentTasks.length}</strong> independent tasks (can run in parallel) |
+                                                                                                    <strong> {tasksWithDeps.length}</strong> dependent tasks (must wait for predecessor)
+                                                                                                </div>
+                                                                                                <div style={{ maxHeight: '100px', overflowY: 'auto' }}>
+                                                                                                    {projectTasks.slice(0, 4).map((task, idx) => {
+                                                                                                        const hasPred = !!task.predecessorId;
+                                                                                                        const pred = hasPred ? projectTasks.find(t => t.id === task.predecessorId) : null;
+                                                                                                        return (
+                                                                                                            <div key={task.id} className="text-xs" style={{
+                                                                                                                display: 'flex',
+                                                                                                                gap: '4px',
+                                                                                                                alignItems: 'center',
+                                                                                                                marginBottom: '2px'
+                                                                                                            }}>
+                                                                                                                <span style={{ color: hasPred ? 'var(--warning)' : 'var(--success)' }}>
+                                                                                                                    {hasPred ? '⛓️' : '🟢'}
+                                                                                                                </span>
+                                                                                                                <span style={{ flex: 1, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                                                                    {task.name}
+                                                                                                                </span>
+                                                                                                                <span className="text-muted">
+                                                                                                                    {hasPred && pred ? `← waits for ${pred.name?.substring(0, 15)}...` : '(can start Day 1)'}
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                        );
+                                                                                                    })}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    })()}
+                                                                                </div>
+
+                                                                                {/* Visual Scheduling Rules Legend */}
+                                                                                <div style={{
+                                                                                    padding: '12px',
+                                                                                    backgroundColor: 'var(--bg-tertiary)',
+                                                                                    borderRadius: '8px',
+                                                                                    border: '1px solid var(--border-color)'
+                                                                                }}>
+                                                                                    <div className="text-xs font-bold mb-3" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                                        📐 Scheduling Rules
+                                                                                    </div>
+
+                                                                                    {/* Rule Cards */}
+                                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                                                                                        {/* Rule 1: Independent Tasks */}
+                                                                                        <div style={{
+                                                                                            padding: '10px',
+                                                                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                                                                            borderRadius: '6px',
+                                                                                            border: '1px solid var(--success)'
+                                                                                        }}>
+                                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                                                                <span style={{
+                                                                                                    display: 'flex',
+                                                                                                    alignItems: 'center',
+                                                                                                    justifyContent: 'center',
+                                                                                                    width: '24px',
+                                                                                                    height: '24px',
+                                                                                                    backgroundColor: 'var(--success)',
+                                                                                                    borderRadius: '50%',
+                                                                                                    fontSize: '12px'
+                                                                                                }}>🟢</span>
+                                                                                                <span className="text-xs font-bold" style={{ color: 'var(--success)' }}>Independent</span>
+                                                                                            </div>
+                                                                                            <div className="text-xs text-muted">
+                                                                                                Can start <strong>Day 1</strong>
+                                                                                            </div>
+                                                                                            <div style={{
+                                                                                                display: 'flex',
+                                                                                                gap: '4px',
+                                                                                                marginTop: '6px',
+                                                                                                alignItems: 'center'
+                                                                                            }}>
+                                                                                                <div style={{
+                                                                                                    flex: 1,
+                                                                                                    height: '6px',
+                                                                                                    backgroundColor: 'var(--success)',
+                                                                                                    borderRadius: '3px'
+                                                                                                }} />
+                                                                                                <div style={{
+                                                                                                    flex: 1,
+                                                                                                    height: '6px',
+                                                                                                    backgroundColor: 'var(--success)',
+                                                                                                    borderRadius: '3px',
+                                                                                                    opacity: 0.7
+                                                                                                }} />
+                                                                                            </div>
+                                                                                            <div className="text-xs text-muted mt-1" style={{ fontSize: '0.6rem' }}>
+                                                                                                ↑ Multiple tasks in parallel
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        {/* Rule 2: Dependent Tasks */}
+                                                                                        <div style={{
+                                                                                            padding: '10px',
+                                                                                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                                                                            borderRadius: '6px',
+                                                                                            border: '1px solid var(--warning)'
+                                                                                        }}>
+                                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                                                                <span style={{
+                                                                                                    display: 'flex',
+                                                                                                    alignItems: 'center',
+                                                                                                    justifyContent: 'center',
+                                                                                                    width: '24px',
+                                                                                                    height: '24px',
+                                                                                                    backgroundColor: 'var(--warning)',
+                                                                                                    borderRadius: '50%',
+                                                                                                    fontSize: '12px'
+                                                                                                }}>⛓️</span>
+                                                                                                <span className="text-xs font-bold" style={{ color: 'var(--warning)' }}>Dependent</span>
+                                                                                            </div>
+                                                                                            <div className="text-xs text-muted">
+                                                                                                Waits for <strong>predecessor</strong>
+                                                                                            </div>
+                                                                                            <div style={{
+                                                                                                display: 'flex',
+                                                                                                gap: '4px',
+                                                                                                marginTop: '6px',
+                                                                                                alignItems: 'center'
+                                                                                            }}>
+                                                                                                <div style={{
+                                                                                                    flex: 1,
+                                                                                                    height: '6px',
+                                                                                                    backgroundColor: 'var(--warning)',
+                                                                                                    borderRadius: '3px'
+                                                                                                }} />
+                                                                                                <span style={{ fontSize: '10px' }}>→</span>
+                                                                                                <div style={{
+                                                                                                    flex: 1,
+                                                                                                    height: '6px',
+                                                                                                    backgroundColor: 'var(--warning)',
+                                                                                                    borderRadius: '3px',
+                                                                                                    opacity: 0.7
+                                                                                                }} />
+                                                                                            </div>
+                                                                                            <div className="text-xs text-muted mt-1" style={{ fontSize: '0.6rem' }}>
+                                                                                                ↑ Tasks run sequentially
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {/* Capacity Summary */}
+                                                                                    <div style={{
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center',
+                                                                                        gap: '12px',
+                                                                                        padding: '8px',
+                                                                                        backgroundColor: 'var(--bg-secondary)',
+                                                                                        borderRadius: '6px'
+                                                                                    }}>
+                                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                                            {roleResources.slice(0, 3).map((r, i) => (
+                                                                                                <div key={i} style={{
+                                                                                                    width: '20px',
+                                                                                                    height: '20px',
+                                                                                                    borderRadius: '50%',
+                                                                                                    backgroundColor: 'var(--accent-secondary)',
+                                                                                                    display: 'flex',
+                                                                                                    alignItems: 'center',
+                                                                                                    justifyContent: 'center',
+                                                                                                    fontSize: '10px',
+                                                                                                    color: 'white',
+                                                                                                    marginLeft: i > 0 ? '-6px' : 0
+                                                                                                }}>
+                                                                                                    {r.name?.[0] || '?'}
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                        <div className="text-xs">
+                                                                                            <strong>{roleResources.length} {keyRole}s</strong>
+                                                                                            <span className="text-muted"> × {Math.round(totalCapacity / Math.max(1, roleResources.length))}h = </span>
+                                                                                            <strong style={{ color: 'var(--success)' }}>{totalCapacity}h/month</strong>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     );
                                                 })()}
@@ -715,18 +1150,29 @@ const StrategicView = () => {
                         </div>
                     </div>
 
-                    {/* 2. ALERT & TABS */}
+                    {/* 2. ALERT & CAPACITY PLAYGROUND */}
                     {currentConflict ? (
                         <>
                             <BottleneckAlert conflict={currentConflict} solutionsCount={currentSolutions.length} />
 
-                            <h3 className="text-lg font-bold mb-2">Resolve Conflict</h3>
-                            <ScenarioTabs
-                                solutions={currentSolutions}
-                                activeSolutionId={activeSolutionId}
-                                onSelectSolution={setActiveSolutionId}
-                                onApplySolution={applySolution}
-                                chartData={previewCalculations.chartData}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <h3 className="text-lg font-bold">Resolve Conflict</h3>
+                                <button
+                                    onClick={() => setIsPlaygroundMaximized(true)}
+                                    className="btn-ghost"
+                                    title="Maximize Playground"
+                                    style={{ padding: '4px', visibility: isPlaygroundMaximized ? 'hidden' : 'visible' }}
+                                >
+                                    <Maximize2 size={18} />
+                                </button>
+                            </div>
+                            <CapacityPlayground
+                                projects={currentSandboxProjects}
+                                resources={currentSandboxResources}
+                                conflict={currentConflict}
+                                onApplyChanges={applyPlaygroundChanges}
+                                isMaximized={isPlaygroundMaximized}
+                                onToggleMaximize={() => setIsPlaygroundMaximized(!isPlaygroundMaximized)}
                             />
                         </>
                     ) : (

@@ -10,7 +10,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authApi, apiClient } from '../api/client';
-import { USERS, ORGANIZATIONS, getUserById, getOrgById, getAllUsers, DEFAULT_DEMO_USER_ID } from '../data/authData';
+import { USERS, ORGANIZATIONS, STUDIOS, getUserById, getOrgById, getStudioById, getAllUsers, getAllStudios, DEFAULT_DEMO_USER_ID } from '../data/authData';
 
 const AuthContext = createContext(null);
 
@@ -43,11 +43,26 @@ export function AuthProvider({ children }) {
             const demoUser = getUserById(impersonatedUserId);
             if (demoUser) {
                 const org = getOrgById(demoUser.org_id);
+                const studio = getStudioById(demoUser.studio_id);
+
+                // For Studio Leads, calculate which portfolios belong to their studio
+                let studioWithPortfolios = studio;
+                if (studio && demoUser.role === 'Studio Lead') {
+                    const clientPortfolios = Object.values(ORGANIZATIONS)
+                        .filter(o => o.primaryStudio === studio.id || o.studios?.includes(studio.id))
+                        .map(o => o.id);
+                    studioWithPortfolios = { ...studio, clientPortfolios };
+                }
+
                 return {
                     ...demoUser,
                     organization: org,
+                    studio: studioWithPortfolios,
                     current_org_id: demoUser.org_id,
                     current_org_name: org?.name,
+                    current_studio_id: demoUser.studio_id,
+                    current_studio_name: studioWithPortfolios?.name,
+                    isStudioLead: demoUser.role === 'Studio Lead',
                     isDemo: true
                 };
             }
@@ -56,7 +71,9 @@ export function AuthProvider({ children }) {
             return {
                 ...user,
                 current_org_id: currentOrgId,
-                current_org_name: currentOrgName
+                current_org_name: currentOrgName,
+                // In real auth, studio would come from token or user profile
+                isStudioLead: user.role === 'Studio Lead'
             };
         }
         return null;
@@ -290,6 +307,8 @@ export function AuthProvider({ children }) {
         disableDemoMode,
         allDemoUsers: getAllUsers(),
         allDemoOrgs: Object.values(ORGANIZATIONS),
+        allDemoStudios: getAllStudios(),
+        getStudioById,
     };
 
     return (

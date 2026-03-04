@@ -33,11 +33,23 @@ const OperationalView = () => {
     // Tenant-aware filtering
     const projects = useMemo(() => {
         if (!isDemoMode || !currentUser) return allProjects;
+
+        // Studio Lead: Show all projects for portfolios in this studio
+        if (currentUser.isStudioLead && currentUser.studio) {
+            return allProjects.filter(p => currentUser.studio.clientPortfolios?.includes(p.org_id));
+        }
+
         return allProjects.filter(p => p.org_id === currentUser.org_id);
     }, [allProjects, currentUser, isDemoMode]);
 
     const resources = useMemo(() => {
         if (!isDemoMode || !currentUser) return allResources;
+
+        // Studio Lead: Show all resources in this studio (including flex pool)
+        if (currentUser.isStudioLead) {
+            return allResources.filter(r => r.studio_id === currentUser.current_studio_id);
+        }
+
         return allResources.filter(r => r.org_id === currentUser.org_id);
     }, [allResources, currentUser, isDemoMode]);
 

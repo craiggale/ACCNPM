@@ -24,6 +24,7 @@ const Admin = () => {
     // Gateway Template State
     const [newGateway, setNewGateway] = useState({ name: '', offsetWeeks: 0 });
 
+
     // Load tasks and gateways when selection changes
     React.useEffect(() => {
         const currentTasks = (taskTemplates[selectedTeam] && taskTemplates[selectedTeam][selectedScale]) || [];

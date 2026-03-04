@@ -1,18 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Calendar, TrendingUp, Settings, Users, Rocket, Target, BarChart2, Sun, Moon, User } from 'lucide-react';
+import { LayoutDashboard, Calendar, TrendingUp, Settings, Users, Rocket, Target, BarChart2, Sun, Moon, User, Sparkles } from 'lucide-react';
 import TenantSwitcher from './TenantSwitcher';
+import AIAssistant from './AIAssistant';
 import { useTheme } from '../context/ThemeContext';
 
 const Layout = ({ children }) => {
     const location = useLocation();
     const { theme, toggleTheme, isDark } = useTheme();
+    const [isAIOpen, setIsAIOpen] = useState(false);
 
     const navSections = [
         {
             title: 'MY ACCOUNT',
             items: [
                 { path: '/my-account', label: 'My Account', icon: User },
+            ]
+        },
+        {
+            title: 'EXECUTIVE',
+            items: [
+                { path: '/executive', label: 'Executive Dashboard', icon: TrendingUp },
             ]
         },
         {
@@ -27,7 +35,7 @@ const Layout = ({ children }) => {
         {
             title: 'PERFORMANCE AND VALUE',
             items: [
-                { path: '/kvi-tracking', label: 'KVI Tracking', icon: Target },
+                { path: '/kvi-tracking', label: 'Performance Trends', icon: Target },
                 { path: '/initiatives', label: 'Initiatives', icon: Rocket },
             ]
         },
@@ -129,12 +137,49 @@ const Layout = ({ children }) => {
             </aside>
 
             {/* Main Content */}
-            <main style={{ flex: 1, padding: 'var(--spacing-xl)', overflowY: 'auto' }}>
+            <main style={{ flex: 1, padding: 'var(--spacing-xl)', overflowY: 'auto', position: 'relative' }}>
                 {children}
+
+                {/* AI Assistant Floating Trigger */}
+                <button
+                    id="ai-assistant-trigger"
+                    onClick={() => setIsAIOpen(true)}
+                    title="AI Assistant"
+                    style={{
+                        position: 'fixed',
+                        bottom: '24px',
+                        right: '24px',
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '16px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #A100FF, #7000CC)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 990,
+                        boxShadow: '0 4px 24px rgba(161, 0, 255, 0.4), 0 0 40px rgba(161, 0, 255, 0.15)',
+                        transition: 'all 0.3s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.08)';
+                        e.currentTarget.style.boxShadow = '0 6px 32px rgba(161, 0, 255, 0.6), 0 0 60px rgba(161, 0, 255, 0.25)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 4px 24px rgba(161, 0, 255, 0.4), 0 0 40px rgba(161, 0, 255, 0.15)';
+                    }}
+                >
+                    <Sparkles size={22} />
+                </button>
             </main>
+
+            {/* AI Assistant Drawer */}
+            <AIAssistant isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
         </div>
     );
 };
 
 export default Layout;
-

@@ -8,6 +8,7 @@ from app.models.task import Task, TaskMarketStatus
 from app.models.resource import Resource
 from app.models.initiative import Initiative, InitiativeValueMetric, InitiativeTaskLink, InitiativeTaskValue
 from app.models.template import TaskTemplate, GatewayTemplate, Team, Market
+from app.models.kpi import KPIDefinition, PortfolioKPI, ValueGap
 
 __all__ = [
     "Organization",
@@ -28,5 +29,8 @@ __all__ = [
     "GatewayTemplate",
     "Team",
     "Market",
+    "KPIDefinition",
+    "PortfolioKPI",
+    "ValueGap",
 ]
 

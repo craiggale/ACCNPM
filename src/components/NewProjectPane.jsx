@@ -24,7 +24,7 @@ const NewProjectPane = ({ onClose, onAdd, planningMode = 'Standard' }) => {
                 ...newProject,
                 isResourceDriven: true,
                 startDate: newProject.startDate || format(new Date(), 'yyyy-MM-dd'), // Default to today/selected
-                endDate: '', // Will be calculated
+                endDate: newProject.startDate || format(new Date(), 'yyyy-MM-dd'), // Default to start date (0 duration) initially
                 status: 'Draft'
             };
             if (onAdd) onAdd(projectData);

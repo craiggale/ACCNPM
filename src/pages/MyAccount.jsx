@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { format, startOfWeek, addDays, parseISO, differenceInBusinessDays, differenceInCalendarDays, isWithinInterval } from 'date-fns';
-import { ListTodo, Clock, Palmtree, ChevronRight, Check, Calendar, Plus } from 'lucide-react';
+import { ListTodo, Clock, Palmtree, ChevronRight, Check, Calendar, Plus, AlertTriangle, ArrowRight, Play } from 'lucide-react';
 
 const MyAccount = () => {
     const { tasks, projects, resources, timesheetEntries = [], leaveRequests = [], submitLeaveRequest, updateTimesheetEntry, updateTask } = useApp();
@@ -27,6 +27,55 @@ const MyAccount = () => {
             return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
         });
     }, [tasks, currentUser, resources]);
+
+    // State for blocking tasks
+    const [blockingTaskId, setBlockingTaskId] = useState(null);
+    const [blockingReason, setBlockingReason] = useState('');
+
+    // --- Suggested Next Task Logic ---
+    // If a high priority task is blocked, suggest the next best available task
+    const suggestedTask = useMemo(() => {
+        // 1. Check if there are any BLOCKED high priority tasks
+        const blockedHighPriority = myTasks.find(t => t.status === 'Blocked' && t.priority === 'High');
+
+        if (!blockedHighPriority) return null;
+
+        // 2. Find the best candidate to work on instead
+        // Candidates must be: Not Completed, Not Blocked, and have Gateways Met
+        const candidates = myTasks.filter(t =>
+            t.id !== blockedHighPriority.id &&
+            t.status !== 'Completed' &&
+            t.status !== 'Blocked'
+        );
+
+        const bestCandidate = candidates.find(t => {
+            // Check Gateway Dependencies
+            if (t.gatewayDependency) {
+                const project = projects.find(p => p.id === t.projectId);
+                if (!project || !project.launchDetails) return true; // Default to available if data missing
+
+                // Check if ALL markets have received this gateway (simplification)
+                // In a real app, we'd check specific market context or assume Global
+                const relevantGateway = project.launchDetails
+                    .flatMap(ld => ld.inputGateways)
+                    .find(g => g.name === t.gatewayDependency);
+
+                if (relevantGateway && relevantGateway.status !== 'Received') {
+                    return false; // Gateway not met
+                }
+            }
+            return true;
+        });
+
+        if (bestCandidate) {
+            return {
+                blocked: blockedHighPriority,
+                suggestion: bestCandidate,
+                reason: blockedHighPriority.blockingReason ? `Blocked: ${blockedHighPriority.blockingReason}` : 'Primary task is blocked'
+            };
+        }
+        return null;
+    }, [myTasks, projects]);
 
     // --- Timesheet Logic ---
     const [timesheetWeekStart, setTimesheetWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -109,11 +158,63 @@ const MyAccount = () => {
     const tabs = [
         { id: 'tasks', label: 'My Tasks', icon: ListTodo },
         { id: 'timesheet', label: 'Timesheet', icon: Clock },
-        { id: 'leave', label: 'Leave', icon: Palmtree },
+        { id: 'leave', label: 'Annual Leave', icon: Palmtree },
     ];
 
     return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
+            {/* Blocking Reason Modal */}
+            {blockingTaskId && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }} onClick={() => setBlockingTaskId(null)}>
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        className="card"
+                        style={{ width: '400px', padding: 'var(--spacing-lg)' }}
+                    >
+                        <h3 className="text-lg" style={{ marginBottom: '1rem' }}>Mark Task as Blocked</h3>
+                        <p className="text-sm text-muted" style={{ marginBottom: '1rem' }}>
+                            Please specify why this task is blocked so we can suggest an alternative.
+                        </p>
+                        <textarea
+                            className="input"
+                            value={blockingReason}
+                            onChange={e => setBlockingReason(e.target.value)}
+                            placeholder="e.g. Waiting for client assets..."
+                            rows={3}
+                            style={{ width: '100%', marginBottom: '1rem' }}
+                            autoFocus
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                            <button className="btn-ghost" onClick={() => setBlockingTaskId(null)}>Cancel</button>
+                            <button
+                                className="btn btn-primary"
+                                disabled={!blockingReason.trim()}
+                                onClick={() => {
+                                    updateTask(blockingTaskId, {
+                                        status: 'Blocked',
+                                        blockingReason: blockingReason
+                                    });
+                                    setBlockingTaskId(null);
+                                    setBlockingReason('');
+                                }}
+                            >
+                                Confirm Block
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div style={{ marginBottom: 'var(--spacing-lg)' }}>
                 <h1 className="text-2xl" style={{ marginBottom: '0.25rem' }}>
@@ -163,6 +264,59 @@ const MyAccount = () => {
                 {/* MY TASKS */}
                 {activeTab === 'tasks' && (
                     <div>
+                        {/* Suggestion Banner */}
+                        {suggestedTask && (
+                            <div className="card" style={{
+                                marginBottom: 'var(--spacing-md)',
+                                background: 'linear-gradient(to right, rgba(161, 0, 255, 0.05), rgba(16, 185, 129, 0.05))',
+                                border: '1px solid var(--accent-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--spacing-md)',
+                                padding: 'var(--spacing-md)'
+                            }}>
+                                <div style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'rgba(161, 0, 255, 0.1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--accent-primary)'
+                                }}>
+                                    <Play size={20} fill="currentColor" />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>Suggested Next Task</h3>
+                                        <span className="text-xs" style={{
+                                            padding: '2px 8px',
+                                            borderRadius: '12px',
+                                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                            color: 'var(--danger)',
+                                            border: '1px solid rgba(239, 68, 68, 0.2)'
+                                        }}>
+                                            {suggestedTask.reason}
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span className="text-sm font-medium">{suggestedTask.suggestion.name} ({suggestedTask.suggestion.estimate}h)</span>
+                                        <ArrowRight size={14} className="text-muted" />
+                                        <span className="text-sm text-muted">Ready to start</span>
+                                    </div>
+                                </div>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => {
+                                        updateTask(suggestedTask.suggestion.id, { status: 'In Progress' });
+                                    }}
+                                >
+                                    Start Now
+                                </button>
+                            </div>
+                        )}
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
                             <h2 className="text-lg">Your Assigned Tasks ({myTasks.length})</h2>
                             <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', padding: '2px' }}>
@@ -195,8 +349,10 @@ const MyAccount = () => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                                     {myTasks.map(task => {
                                         const project = projects.find(p => p.id === task.projectId);
-                                        const priorityColor = task.priority === 'High' ? 'var(--danger)' :
-                                            task.priority === 'Medium' ? 'var(--warning)' : 'var(--success)';
+                                        const priorityColor = task.status === 'Blocked' ? 'var(--danger)' :
+                                            task.status === 'Delayed' ? 'var(--warning)' :
+                                                task.priority === 'High' ? 'var(--danger)' :
+                                                    task.priority === 'Medium' ? 'var(--warning)' : 'var(--success)';
                                         return (
                                             <div key={task.id} style={{
                                                 display: 'flex',
@@ -218,6 +374,56 @@ const MyAccount = () => {
                                                         <div style={{ fontWeight: 500 }}>{task.startDate ? format(parseISO(task.startDate), 'MMM d') : '—'}</div>
                                                         <div className="text-xs text-muted">to {task.endDate ? format(parseISO(task.endDate), 'MMM d') : '—'}</div>
                                                     </div>
+
+                                                    {/* Status Actions */}
+                                                    {task.status !== 'Completed' && (
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setBlockingTaskId(task.id);
+                                                                    setBlockingReason('');
+                                                                }}
+                                                                title="Mark as Blocked"
+                                                                style={{
+                                                                    padding: '4px',
+                                                                    borderRadius: 'var(--radius-sm)',
+                                                                    border: 'none',
+                                                                    cursor: 'pointer',
+                                                                    backgroundColor: task.status === 'Blocked' ? 'var(--danger)' : 'var(--bg-tertiary)',
+                                                                    color: task.status === 'Blocked' ? 'white' : 'var(--text-muted)',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center'
+                                                                }}
+                                                            >
+                                                                <AlertTriangle size={14} />
+                                                            </button>
+
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const newStatus = task.status === 'Delayed' ? 'In Progress' : 'Delayed';
+                                                                    updateTask(task.id, { status: newStatus });
+                                                                }}
+                                                                title="Mark as Delayed"
+                                                                style={{
+                                                                    padding: '4px',
+                                                                    borderRadius: 'var(--radius-sm)',
+                                                                    border: 'none',
+                                                                    cursor: 'pointer',
+                                                                    backgroundColor: task.status === 'Delayed' ? 'var(--warning)' : 'var(--bg-tertiary)',
+                                                                    color: task.status === 'Delayed' ? 'white' : 'var(--text-muted)',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center'
+                                                                }}
+                                                            >
+                                                                <Clock size={14} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -297,11 +503,16 @@ const MyAccount = () => {
                                         }).map(task => {
                                             const project = projects.find(p => p.id === task.projectId);
 
-                                            // Calculate daily hours allocation
-                                            const start = parseISO(task.startDate);
-                                            const end = parseISO(task.endDate);
-                                            const businessDays = Math.max(1, differenceInBusinessDays(end, start) + 1);
-                                            const dailyHours = Math.round((task.estimate || 0) / businessDays * 10) / 10;
+                                            // Calculate daily hours allocation logic (consistent with Timesheet/Hour view)
+                                            // Split 8h work day among all active tasks
+                                            const activeTasksCount = myTasks.filter(t => {
+                                                if (!t.startDate || !t.endDate) return false;
+                                                const s = parseISO(t.startDate);
+                                                const e = parseISO(t.endDate);
+                                                return selectedDate >= s && selectedDate <= e;
+                                            }).length;
+
+                                            const dailyHours = activeTasksCount > 0 ? Math.round((8 / activeTasksCount) * 10) / 10 : 0;
 
                                             return (
                                                 <div key={task.id} style={{

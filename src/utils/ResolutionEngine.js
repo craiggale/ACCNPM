@@ -1,4 +1,4 @@
-import { addMonths, startOfMonth, endOfMonth, isWithinInterval, addWeeks, format, differenceInMonths } from 'date-fns';
+import { addMonths, startOfMonth, endOfMonth, isWithinInterval, addWeeks, format, differenceInMonths, isValid } from 'date-fns';
 
 // --- Helpers ---
 
@@ -63,7 +63,7 @@ export const ResolutionEngine = {
                 const pStart = new Date(p.startDate);
                 const pEnd = new Date(p.endDate);
 
-                if (pStart <= monthEnd && pEnd >= monthStart) {
+                if (isValid(pStart) && isValid(pEnd) && pStart <= monthEnd && pEnd >= monthStart) {
                     // Start with simple demand estimation
                     // In real app, this would use the detailed breakdown from OperationalView
                     let monthlyHours = 320; // Default Medium
@@ -143,8 +143,8 @@ export const ResolutionEngine = {
                 description: `Delay ${targetProject.isDraft ? 'draft' : 'active'} project "${targetProject.name}" start by ${shiftAmount} months to bypass the ${conflict.period} bottleneck.`,
                 action: {
                     type: 'UPDATE_PROJECT', projectId: targetProject.id, changes: {
-                        startDate: format(addMonths(new Date(targetProject.startDate), shiftAmount), 'yyyy-MM-dd'),
-                        endDate: format(addMonths(new Date(targetProject.endDate), shiftAmount), 'yyyy-MM-dd')
+                        startDate: isValid(new Date(targetProject.startDate)) ? format(addMonths(new Date(targetProject.startDate), shiftAmount), 'yyyy-MM-dd') : targetProject.startDate,
+                        endDate: isValid(new Date(targetProject.endDate)) ? format(addMonths(new Date(targetProject.endDate), shiftAmount), 'yyyy-MM-dd') : targetProject.endDate
                     }
                 }
             });

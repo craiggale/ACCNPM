@@ -20,6 +20,7 @@ const TenantSwitcher = () => {
         userPortfolios,
         allDemoUsers,
         allDemoOrgs,
+        allDemoStudios, // Add this
         logout
     } = useAuth();
 
@@ -37,7 +38,14 @@ const TenantSwitcher = () => {
         users: allDemoUsers.filter(u => u.org_id === org.id)
     })) : [];
 
+    // Group studio leads by studio
+    const usersByStudio = isDemoMode && allDemoStudios ? allDemoStudios.map(studio => ({
+        studio,
+        users: allDemoUsers.filter(u => u.studio_id === studio.id && u.role === 'Studio Lead')
+    })).filter(group => group.users.length > 0) : [];
+
     const getRoleBadgeColor = (role) => {
+        if (role === 'Studio Lead') return { bg: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: 'rgba(16, 185, 129, 0.3)' };
         return role === 'Admin' || role === 'admin'
             ? { bg: 'rgba(161, 0, 255, 0.15)', color: '#A100FF', border: 'rgba(161, 0, 255, 0.3)' }
             : { bg: 'rgba(107, 114, 128, 0.15)', color: 'var(--text-muted)', border: 'rgba(107, 114, 128, 0.3)' };
@@ -88,7 +96,7 @@ const TenantSwitcher = () => {
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {currentOrg?.name || currentUser?.current_org_name || 'Portfolio'}
+                        {currentUser?.studio?.name || currentOrg?.name || currentUser?.current_org_name || 'Portfolio'}
                     </span>
                     <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
                         {currentUser?.name}
@@ -168,111 +176,216 @@ const TenantSwitcher = () => {
                         {/* Content */}
                         <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                             {isDemoMode ? (
-                                /* Demo Mode: Show users grouped by org */
-                                usersByOrg.map(({ org, users }) => (
-                                    <div key={org.id}>
-                                        {/* Org Header */}
-                                        <div style={{
-                                            padding: '0.5rem 1rem',
-                                            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                            borderBottom: '1px solid var(--bg-tertiary)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem'
-                                        }}>
-                                            <Building2 size={12} color={org.theme} />
-                                            <span style={{
-                                                fontSize: '0.75rem',
-                                                fontWeight: 600,
-                                                color: org.theme
+                                <>
+                                    {/* Studio Leads Section */}
+                                    {usersByStudio.map(({ studio, users }) => (
+                                        <div key={studio.id}>
+                                            <div style={{
+                                                padding: '0.5rem 1rem',
+                                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                                borderBottom: '1px solid var(--bg-tertiary)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
                                             }}>
-                                                {org.name}
-                                            </span>
+                                                <Building2 size={12} color={studio.theme} />
+                                                <span style={{
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 600,
+                                                    color: studio.theme
+                                                }}>
+                                                    {studio.name}
+                                                </span>
+                                            </div>
+                                            {users.map(user => {
+                                                const isSelected = currentUser?.id === user.id;
+                                                const colors = getRoleBadgeColor(user.role);
+
+                                                return (
+                                                    <button
+                                                        key={user.id}
+                                                        onClick={() => {
+                                                            switchUser(user.id);
+                                                            setIsOpen(false);
+                                                        }}
+                                                        style={{
+                                                            width: '100%',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.75rem',
+                                                            padding: '0.75rem 1rem',
+                                                            border: 'none',
+                                                            backgroundColor: isSelected ? 'rgba(161, 0, 255, 0.1)' : 'transparent',
+                                                            borderLeft: isSelected ? '3px solid #A100FF' : '3px solid transparent',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s ease',
+                                                            textAlign: 'left'
+                                                        }}
+                                                        onMouseEnter={e => {
+                                                            if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                                                        }}
+                                                    >
+                                                        {/* Avatar */}
+                                                        <div style={{
+                                                            width: 32,
+                                                            height: 32,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            flexShrink: 0
+                                                        }}>
+                                                            <User size={16} color="#10B981" />
+                                                        </div>
+
+                                                        {/* Name & Email */}
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{
+                                                                fontSize: '0.875rem',
+                                                                fontWeight: isSelected ? 600 : 500,
+                                                                color: 'var(--text-primary)'
+                                                            }}>
+                                                                {user.name}
+                                                            </div>
+                                                            <div style={{
+                                                                fontSize: '0.75rem',
+                                                                color: 'var(--text-muted)',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                                {user.email}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Role Badge */}
+                                                        <span style={{
+                                                            fontSize: '0.65rem',
+                                                            padding: '0.125rem 0.5rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: colors.bg,
+                                                            color: colors.color,
+                                                            border: `1px solid ${colors.border}`,
+                                                            flexShrink: 0
+                                                        }}>
+                                                            {user.role}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
+                                    ))}
 
-                                        {/* Users */}
-                                        {users.map(user => {
-                                            const isSelected = currentUser?.id === user.id;
-                                            const colors = getRoleBadgeColor(user.role);
+                                    {/* Existing Portfolio Users */}
+                                    {usersByOrg.map(({ org, users }) => (
+                                        <div key={org.id}>
+                                            {/* Org Header */}
+                                            <div style={{
+                                                padding: '0.5rem 1rem',
+                                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                                borderBottom: '1px solid var(--bg-tertiary)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}>
+                                                <Building2 size={12} color={org.theme} />
+                                                <span style={{
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 600,
+                                                    color: org.theme
+                                                }}>
+                                                    {org.name}
+                                                </span>
+                                            </div>
 
-                                            return (
-                                                <button
-                                                    key={user.id}
-                                                    onClick={() => {
-                                                        switchUser(user.id);
-                                                        setIsOpen(false);
-                                                    }}
-                                                    style={{
-                                                        width: '100%',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.75rem',
-                                                        padding: '0.75rem 1rem',
-                                                        border: 'none',
-                                                        backgroundColor: isSelected ? 'rgba(161, 0, 255, 0.1)' : 'transparent',
-                                                        borderLeft: isSelected ? '3px solid #A100FF' : '3px solid transparent',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.15s ease',
-                                                        textAlign: 'left'
-                                                    }}
-                                                    onMouseEnter={e => {
-                                                        if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
-                                                    }}
-                                                    onMouseLeave={e => {
-                                                        if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
-                                                    }}
-                                                >
-                                                    {/* Avatar */}
-                                                    <div style={{
-                                                        width: 32,
-                                                        height: 32,
-                                                        borderRadius: '50%',
-                                                        backgroundColor: user.role === 'Admin' ? 'rgba(161, 0, 255, 0.2)' : 'var(--bg-tertiary)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        flexShrink: 0
-                                                    }}>
-                                                        <User size={16} color={user.role === 'Admin' ? '#A100FF' : 'var(--text-muted)'} />
-                                                    </div>
+                                            {/* Users */}
+                                            {users.map(user => {
+                                                const isSelected = currentUser?.id === user.id;
+                                                const colors = getRoleBadgeColor(user.role);
 
-                                                    {/* Name & Email */}
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                return (
+                                                    <button
+                                                        key={user.id}
+                                                        onClick={() => {
+                                                            switchUser(user.id);
+                                                            setIsOpen(false);
+                                                        }}
+                                                        style={{
+                                                            width: '100%',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.75rem',
+                                                            padding: '0.75rem 1rem',
+                                                            border: 'none',
+                                                            backgroundColor: isSelected ? 'rgba(161, 0, 255, 0.1)' : 'transparent',
+                                                            borderLeft: isSelected ? '3px solid #A100FF' : '3px solid transparent',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s ease',
+                                                            textAlign: 'left'
+                                                        }}
+                                                        onMouseEnter={e => {
+                                                            if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                                                        }}
+                                                    >
+                                                        {/* Avatar */}
                                                         <div style={{
-                                                            fontSize: '0.875rem',
-                                                            fontWeight: isSelected ? 600 : 500,
-                                                            color: 'var(--text-primary)'
+                                                            width: 32,
+                                                            height: 32,
+                                                            borderRadius: '50%',
+                                                            backgroundColor: user.role === 'Admin' ? 'rgba(161, 0, 255, 0.2)' : 'var(--bg-tertiary)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            flexShrink: 0
                                                         }}>
-                                                            {user.name}
+                                                            <User size={16} color={user.role === 'Admin' ? '#A100FF' : 'var(--text-muted)'} />
                                                         </div>
-                                                        <div style={{
-                                                            fontSize: '0.75rem',
-                                                            color: 'var(--text-muted)',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            whiteSpace: 'nowrap'
-                                                        }}>
-                                                            {user.email}
-                                                        </div>
-                                                    </div>
 
-                                                    {/* Role Badge */}
-                                                    <span style={{
-                                                        fontSize: '0.65rem',
-                                                        padding: '0.125rem 0.5rem',
-                                                        borderRadius: '4px',
-                                                        backgroundColor: colors.bg,
-                                                        color: colors.color,
-                                                        border: `1px solid ${colors.border}`,
-                                                        flexShrink: 0
-                                                    }}>
-                                                        {user.role}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                ))
+                                                        {/* Name & Email */}
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{
+                                                                fontSize: '0.875rem',
+                                                                fontWeight: isSelected ? 600 : 500,
+                                                                color: 'var(--text-primary)'
+                                                            }}>
+                                                                {user.name}
+                                                            </div>
+                                                            <div style={{
+                                                                fontSize: '0.75rem',
+                                                                color: 'var(--text-muted)',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                                {user.email}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Role Badge */}
+                                                        <span style={{
+                                                            fontSize: '0.65rem',
+                                                            padding: '0.125rem 0.5rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: colors.bg,
+                                                            color: colors.color,
+                                                            border: `1px solid ${colors.border}`,
+                                                            flexShrink: 0
+                                                        }}>
+                                                            {user.role}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    ))}
+                                </>
                             ) : (
                                 /* Real Mode: Show user's assigned portfolios */
                                 userPortfolios.map(org => {

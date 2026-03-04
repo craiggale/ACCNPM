@@ -31,6 +31,8 @@ class Project(Base):
     pm: Mapped["User"] = relationship(back_populates="managed_projects")
     launch_details: Mapped[list["LaunchDetail"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     tasks: Mapped[list["Task"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    value_gaps: Mapped[list["ValueGap"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+
 
 
 class LaunchDetail(Base):

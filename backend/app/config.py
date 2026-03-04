@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
     
+    # Vertex AI (LLM Bridge)
+    vertex_project_id: str = "bmckxff-lovelace"
+    vertex_location: str = "global"
+    vertex_model_id: str = "claude-sonnet-4-6"
+    vertex_endpoint: str = "aiplatform.googleapis.com"
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

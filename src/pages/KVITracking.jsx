@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -12,7 +13,7 @@ import {
 import { differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
 
 const KVITracking = () => {
-    const { projects, tasks } = useApp();
+    const { projects, tasks, valueGaps } = useApp();
     const { currentUser } = useAuth();
 
     // Filter projects for current tenant
@@ -82,7 +83,13 @@ const KVITracking = () => {
         };
     }, [tenantProjects, tasks]);
 
-    // Mock Data for other sections (can be made dynamic later)
+    // Get Value Gaps for current tenant
+    const tenantValueGaps = useMemo(() => {
+        if (!currentUser) return [];
+        return valueGaps.filter(gap => gap.org_id === currentUser.org_id);
+    }, [valueGaps, currentUser]);
+
+    // Mock Data for portfolio metrics
     const portfolioMetrics = [
         { label: 'Avg Schedule Variance', value: '+8%', trend: 'up', status: 'warning' },
         { label: 'On-Time Delivery Rate', value: '78%', trend: 'stable', status: 'success' },
@@ -108,26 +115,29 @@ const KVITracking = () => {
         { subject: 'Risk Mitigation', A: 65, B: 85, fullMark: 150 },
     ];
 
-    const aiInsights = [
-        {
-            id: 1,
-            type: 'warning',
-            text: "'Market Build' tasks are consistently under-estimated by 20% across all projects.",
-            project: 'All Projects'
-        },
-        {
-            id: 2,
-            type: 'success',
-            text: "Project Falcon has improved delivery velocity by 15% since adopting the new QA process.",
-            project: 'Project Falcon'
-        },
-        {
-            id: 3,
-            type: 'info',
-            text: "Resource bottlenecks predicted in 'Backend Dev' for Q3 based on current trajectory.",
-            project: 'Portfolio'
-        },
-    ];
+    // AI Insights now include Value Gaps from the Resolution Engine
+    const aiInsights = useMemo(() => {
+        const gapInsights = tenantValueGaps.map(gap => ({
+            id: gap.id,
+            type: gap.severity === 'critical' ? 'warning' : 'info',
+            text: gap.title,
+            description: gap.description,
+            action: gap.suggestedAction,
+            project: gap.projectId ? tenantProjects.find(p => p.id === gap.projectId)?.name || 'Portfolio' : 'Portfolio',
+            isValueGap: true
+        }));
+
+        const standardInsights = [
+            {
+                id: 'std-1',
+                type: 'success',
+                text: "Project delivery velocity improved 15% since adopting new QA process.",
+                project: 'Portfolio'
+            }
+        ];
+
+        return [...gapInsights, ...standardInsights];
+    }, [tenantValueGaps, tenantProjects]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xl)' }}>
@@ -135,8 +145,28 @@ const KVITracking = () => {
             {/* Header */}
             <div>
                 <h1 className="text-2xl" style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>KVI Tracking</h1>
-                <p className="text-muted">Analyze efficiency and quality of delivery across the portfolio.</p>
+                <p className="text-muted">Delivery metrics, project health, and portfolio performance insights.</p>
             </div>
+
+            {/* Link to Executive Dashboard for Business KPIs */}
+            <Link to="/executive" style={{ textDecoration: 'none' }}>
+                <div className="card" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    borderLeft: '3px solid var(--accent-primary)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <Target size={24} color="var(--accent-primary)" />
+                        <div>
+                            <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>Business KPIs</div>
+                            <div className="text-sm text-muted">View and manage on the Executive Dashboard</div>
+                        </div>
+                    </div>
+                    <ArrowRight size={20} color="var(--text-muted)" />
+                </div>
+            </Link>
 
             {/* Portfolio Metrics Cards */}
             <div style={{
@@ -273,14 +303,31 @@ const KVITracking = () => {
                                 <div key={insight.id} style={{
                                     padding: '1rem',
                                     borderLeft: `3px solid ${insight.type === 'warning' ? 'var(--warning)' : insight.type === 'success' ? 'var(--success)' : 'var(--info)'}`,
-                                    backgroundColor: 'var(--bg-primary)',
+                                    backgroundColor: insight.isValueGap ? 'rgba(161, 0, 255, 0.05)' : 'var(--bg-primary)',
                                     borderRadius: '0 var(--radius-md) var(--radius-md) 0'
                                 }}>
-                                    <p className="text-sm" style={{ marginBottom: '0.5rem' }}>{insight.text}</p>
+                                    {insight.isValueGap && (
+                                        <div className="text-xs" style={{
+                                            color: 'var(--accent-primary)',
+                                            fontWeight: 600,
+                                            marginBottom: '0.25rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.25rem'
+                                        }}>
+                                            <Activity size={12} /> VALUE GAP DETECTED
+                                        </div>
+                                    )}
+                                    <p className="text-sm" style={{ marginBottom: '0.5rem', fontWeight: insight.isValueGap ? 500 : 400 }}>{insight.text}</p>
+                                    {insight.action && (
+                                        <p className="text-xs text-muted" style={{ marginBottom: '0.5rem', fontStyle: 'italic' }}>
+                                            💡 {insight.action}
+                                        </p>
+                                    )}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span className="text-xs text-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>{insight.project}</span>
                                         <button className="btn btn-ghost" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}>
-                                            Action <ArrowRight size={12} style={{ marginLeft: '4px' }} />
+                                            {insight.isValueGap ? 'Resolve' : 'Action'} <ArrowRight size={12} style={{ marginLeft: '4px' }} />
                                         </button>
                                     </div>
                                 </div>

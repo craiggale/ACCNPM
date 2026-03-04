@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { Users, Plus, Trash2, Save, X, Sparkles, AlertCircle, CheckCircle2, Globe, Briefcase, Star, Percent } from 'lucide-react';
+import { Users, Plus, Trash2, Save, X, Sparkles, AlertCircle, CheckCircle2, Globe, Briefcase, Star, Percent, Building2 } from 'lucide-react';
 
 const ResourceManagement = () => {
     const { resources: allResources, addResource, updateResource, deleteResource, teams, tasks: allTasks, updateTask, autoAssignTasks } = useApp();
-    const { currentUser, isDemoMode, allDemoUsers, allDemoOrgs } = useAuth();
+    const { currentUser, isDemoMode, allDemoUsers, allDemoOrgs, allDemoStudios, getStudioById } = useAuth();
 
     // View mode: 'portfolio' (current portfolio's team) or 'global' (all users across portfolios)
     const [viewMode, setViewMode] = useState('portfolio');
@@ -13,6 +13,12 @@ const ResourceManagement = () => {
     // Tenant-aware filtering for portfolio view
     const resources = useMemo(() => {
         if (!isDemoMode || !currentUser) return allResources;
+
+        // Studio Lead: Show all resources in this studio (including flex pool)
+        if (currentUser.isStudioLead) {
+            return allResources.filter(r => r.studio_id === currentUser.current_studio_id);
+        }
+
         return allResources.filter(r => r.org_id === currentUser.org_id);
     }, [allResources, currentUser, isDemoMode]);
 
@@ -21,20 +27,24 @@ const ResourceManagement = () => {
     // Format: { [userId]: [{ org_id: 'org-xxx', allocation: 30 }, ...] }
 
     // Global resource pool: all users with their portfolio allocations (for demo mode)
-    // By default, all resources are 100% allocated to their primary portfolio
-    // Secondary portfolios only appear when explicitly assigned via user confirmation
+    // Now shows ACTUAL utilization based on assigned tasks
     const globalResourcePool = useMemo(() => {
         if (!isDemoMode) return [];
 
         return allDemoUsers.map(user => {
             const primaryOrg = allDemoOrgs.find(o => o.id === user.org_id);
 
+            // Calculate actual utilization from assigned tasks
+            const userTasks = allTasks.filter(t =>
+                t.assignee === user.id || t.assignee === user.name
+            );
+            const usedHours = userTasks.reduce((sum, t) => sum + (parseInt(t.estimate) || 0), 0);
+            const capacityHours = parseInt(user.capacity) || 160;
+            const actualUtilization = capacityHours > 0 ? Math.round((usedHours / capacityHours) * 100) : 0;
+
             // Get any explicitly assigned secondary portfolios
             const userSecondaryAssignments = secondaryAssignments[user.id] || [];
             const secondaryAllocation = userSecondaryAssignments.reduce((sum, a) => sum + a.allocation, 0);
-
-            // Primary allocation is 100% minus any secondary assignments
-            const primaryAllocation = 100 - secondaryAllocation;
 
             // Build other portfolios list from secondary assignments
             const otherPortfolios = userSecondaryAssignments.map(assignment => {
@@ -45,13 +55,14 @@ const ResourceManagement = () => {
             return {
                 ...user,
                 primaryPortfolio: primaryOrg,
-                allocation: primaryAllocation,
+                allocation: actualUtilization, // Use actual utilization, not static 100%
+                used_hours: usedHours,
+                capacity_hours: capacityHours,
                 otherPortfolios: otherPortfolios,
-                capacity_hours: 160,
-                is_available: primaryAllocation < 100 // Available if not 100% on primary
+                is_available: actualUtilization < 80 // Available if less than 80% utilized
             };
         });
-    }, [isDemoMode, allDemoUsers, allDemoOrgs, secondaryAssignments]);
+    }, [isDemoMode, allDemoUsers, allDemoOrgs, allTasks, secondaryAssignments]);
 
 
     const tasks = useMemo(() => {
@@ -71,6 +82,104 @@ const ResourceManagement = () => {
     const [assignmentSummary, setAssignmentSummary] = useState(null);
     const [showGaps, setShowGaps] = useState(false);
     const [selectedResource, setSelectedResource] = useState(null);
+    const [groupBy, setGroupBy] = useState('task'); // 'task' | 'role'
+
+    // Simple Resolve Gap function (Mock)
+    const resolveGap = (role, hours) => {
+        // In a real scenario, this would trigger an AI agent workflow or open a contractor modal.
+        // For now, we'll simulate adding a "Contractor" resource to the list to fill the gap
+        const contractor = {
+            name: `AI Contractor (${role})`,
+            role: role,
+            team: 'Flex Pool',
+            capacity: hours,
+            internalRate: 150,
+            clientRate: 200,
+            isFlexible: true
+        };
+        addResource(contractor);
+        // Clean up gaps for this role (simplistic approach for demo)
+        setGaps(prev => prev.filter(g => g.resourceRole !== role));
+    };
+
+    // New GapCard Component
+    const GapCard = ({ title, subTitle, assigned, required, deficit, onResolve, heatmapData }) => {
+        const percent = required > 0 ? Math.round((assigned / required) * 100) : 0;
+        const [showTooltip, setShowTooltip] = useState(false);
+
+        return (
+            <div
+                style={{ padding: '1rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)', position: 'relative' }}
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+            >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                    <div>
+                        <div style={{ fontWeight: 600 }}>{title}</div>
+                        <div className="text-xs text-muted">{subTitle}</div>
+                    </div>
+                    {deficit > 0 && onResolve && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onResolve(); }}
+                            style={{
+                                fontSize: '0.7rem',
+                                padding: '0.2rem 0.5rem',
+                                background: 'linear-gradient(135deg, #A100FF 0%, #7100B3 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}
+                        >
+                            <Sparkles size={10} /> Resolve
+                        </button>
+                    )}
+                </div>
+
+                {/* Duo-tone Capacity Bar */}
+                <div style={{ height: '8px', backgroundColor: 'rgba(255, 69, 58, 0.2)', borderRadius: '4px', overflow: 'hidden', display: 'flex', marginBottom: '0.5rem' }}>
+                    <div style={{ width: `${percent}%`, backgroundColor: 'var(--accent-primary)', height: '100%' }} />
+                    <div style={{ flex: 1, backgroundColor: 'var(--danger)', height: '100%' }} />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{assigned}h Assigned</span>
+                    <span style={{ color: 'var(--danger)', fontWeight: 500 }}>{deficit}h Gap</span>
+                </div>
+
+                {/* Heatmap Tooltip */}
+                {showTooltip && heatmapData && (
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        backgroundColor: 'var(--bg-secondary)',
+                        border: '1px solid var(--bg-tertiary)',
+                        padding: '0.75rem',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                        zIndex: 10,
+                        marginBottom: '8px',
+                        width: '200px'
+                    }}>
+                        <div className="text-xs font-bold" style={{ marginBottom: '0.5rem', textAlign: 'center' }}>4-Month Forecast</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
+                            {heatmapData.map((m, i) => (
+                                <div key={i} style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '0.65rem', marginBottom: '2px' }}>{m.key}</div>
+                                    <div style={{ height: '6px', width: '100%', backgroundColor: m.color, borderRadius: '2px' }} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     // Calculate Utilization
     const resourceUtilization = useMemo(() => {
@@ -197,7 +306,7 @@ const ResourceManagement = () => {
                             }}
                         >
                             <Briefcase size={14} />
-                            Portfolio Team
+                            {currentUser?.isStudioLead ? 'Studio Team' : 'Portfolio Team'}
                         </button>
                         <button
                             onClick={() => setViewMode('global')}
@@ -219,6 +328,32 @@ const ResourceManagement = () => {
                             Global Pool
                         </button>
                     </div>
+
+                    <a
+                        href="/scenario-planner"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 1rem',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid var(--bg-tertiary)',
+                            color: 'var(--text-muted)',
+                            textDecoration: 'none',
+                            fontSize: '0.875rem',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = 'var(--text-muted)';
+                        }}
+                    >
+                        <Building2 size={16} /> Capacity Planning
+                    </a>
 
                     <button
                         className="btn btn-primary"
@@ -243,7 +378,29 @@ const ResourceManagement = () => {
                         <h3 className="text-lg" style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <Sparkles size={20} /> Auto-Assign Summary
                         </h3>
-                        <button onClick={() => setShowGaps(false)} className="btn-ghost"><X size={20} /></button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <button
+                                onClick={() => setViewMode('global')}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--accent-primary)',
+                                    backgroundColor: viewMode === 'global' ? 'rgba(161, 0, 255, 0.1)' : 'transparent',
+                                    color: 'var(--accent-primary)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 500,
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <Globe size={14} />
+                                View Global Pool
+                            </button>
+                            <button onClick={() => setShowGaps(false)} className="btn-ghost"><X size={20} /></button>
+                        </div>
                     </div>
                     <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem' }}>
                         <div style={{ textAlign: 'center' }}>
@@ -266,6 +423,147 @@ const ResourceManagement = () => {
                 </div>
             )}
 
+            {/* REORDERED: 1. Portfolio Team View comes first after Summary */}
+            {viewMode === 'portfolio' && showGaps && (
+                <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+                    <h3 className="text-lg" style={{ marginBottom: 'var(--spacing-md)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Users size={20} /> Portfolio Team Capacity
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                        {resources.map(r => {
+                            const used = resourceUtilization[r.id] || 0;
+                            const capacity = parseInt(r.capacity) - (parseInt(r.leave) || 0);
+                            const utilPct = capacity > 0 ? Math.round((used / capacity) * 100) : 0;
+                            return (
+                                <div key={r.id} style={{ padding: '0.75rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)' }}>
+                                    <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{r.name}</div>
+                                    <div className="text-sm text-muted" style={{ marginBottom: '0.5rem' }}>{r.role} • {r.team}</div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                        <span className="text-sm">{used}h / {capacity}h</span>
+                                        <span className="text-sm" style={{ color: utilPct > 100 ? 'var(--danger)' : utilPct > 80 ? 'var(--warning)' : 'var(--success)' }}>{utilPct}%</span>
+                                    </div>
+                                    <div style={{ height: '6px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div style={{ height: '100%', width: `${Math.min(utilPct, 100)}%`, backgroundColor: utilPct > 100 ? 'var(--danger)' : utilPct > 80 ? 'var(--warning)' : 'var(--success)', borderRadius: '3px' }} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* REORDERED: 2. Gaps section second */}
+            {showGaps && gaps.length > 0 && (
+                <div className="card" style={{ marginBottom: 'var(--spacing-lg)', border: '1px solid var(--warning)', backgroundColor: 'rgba(245, 158, 11, 0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3 className="text-lg" style={{ color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <AlertCircle size={20} /> Resourcing Gaps ({groupBy === 'role' ? Object.keys(
+                                gaps.reduce((acc, gap) => {
+                                    const role = gap.resourceRole || 'Unknown';
+                                    acc[role] = (acc[role] || 0) + 1;
+                                    return acc;
+                                }, {})
+                            ).length : gaps.length})
+                        </h3>
+                        {/* Group By Toggle */}
+                        <div style={{ display: 'flex', backgroundColor: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', padding: '2px' }}>
+                            <button
+                                onClick={() => setGroupBy('task')}
+                                style={{
+                                    padding: '0.25rem 0.75rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: 'none',
+                                    backgroundColor: groupBy === 'task' ? 'var(--bg-primary)' : 'transparent',
+                                    color: groupBy === 'task' ? 'var(--text-primary)' : 'var(--text-muted)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    boxShadow: groupBy === 'task' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
+                                }}
+                            >
+                                Task View
+                            </button>
+                            <button
+                                onClick={() => setGroupBy('role')}
+                                style={{
+                                    padding: '0.25rem 0.75rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: 'none',
+                                    backgroundColor: groupBy === 'role' ? 'var(--bg-primary)' : 'transparent',
+                                    color: groupBy === 'role' ? 'var(--text-primary)' : 'var(--text-muted)',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    boxShadow: groupBy === 'role' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
+                                }}
+                            >
+                                Role View
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                        {groupBy === 'role' ? (
+                            // Role-based Grouping
+                            Object.entries(
+                                gaps.reduce((acc, gap) => {
+                                    const role = gap.resourceRole || 'Unknown Role';
+                                    if (!acc[role]) acc[role] = { role, totalDeficit: 0, gapCount: 0, affectedProjects: new Set() };
+                                    acc[role].totalDeficit += gap.estimate;
+                                    acc[role].gapCount += 1;
+                                    acc[role].affectedProjects.add(gap.projectName);
+                                    return acc;
+                                }, {})
+                            ).map(([role, data]) => {
+                                // Calculate total assigned capacity for this role in the current view
+                                const roleResources = resources.filter(r => r.role === role);
+                                const assignedHours = roleResources.reduce((sum, r) => sum + (resourceUtilization[r.id] || 0), 0);
+                                const totalCapacity = roleResources.reduce((sum, r) => sum + (parseInt(r.capacity) || 0), 0);
+                                const requiredHours = assignedHours + data.totalDeficit;
+
+                                return (
+                                    <GapCard
+                                        key={role}
+                                        title={`${role} Gaps`}
+                                        subTitle={`${data.gapCount} tasks in ${Array.from(data.affectedProjects).join(', ')}`}
+                                        assigned={assignedHours}
+                                        required={requiredHours}
+                                        deficit={data.totalDeficit}
+                                        onResolve={() => resolveGap(role, data.totalDeficit)}
+                                        heatmapData={[
+                                            { key: 'Feb', color: 'var(--success)' },
+                                            { key: 'Mar', color: 'var(--warning)' },
+                                            { key: 'Apr', color: 'var(--danger)' },
+                                            { key: 'May', color: 'var(--success)' }
+                                        ]}
+                                    />
+                                );
+                            })
+                        ) : (
+                            // Existing Task View
+                            gaps.map((gap, index) => (
+                                <div key={index} style={{ padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)' }}>
+                                    <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{gap.taskTitle}</div>
+                                    <div className="text-sm text-muted" style={{ marginBottom: '0.5rem' }}>{gap.projectName} • {gap.requiredTeam}</div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span className="text-sm" style={{ padding: '0.1rem 0.5rem', borderRadius: '1rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning)' }}>
+                                            {gap.reason}
+                                        </span>
+                                        <span className="text-sm text-muted">{gap.estimate}h</span>
+                                    </div>
+                                    {gap.hasCrossPortfolioOption && (
+                                        <div className="text-sm" style={{ marginTop: '0.5rem', color: '#10B981' }}>
+                                            ✓ Cross-portfolio option available
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* REORDERED: 3. Shared Resource Assignment Suggestions (Global Suggestions) */}
             {/* Shared Resource Assignment Suggestions (Requires Confirmation) */}
             {showGaps && sharedAssignments.length > 0 && (
                 <div className="card" style={{ marginBottom: 'var(--spacing-md)', border: '1px solid var(--accent-primary)', backgroundColor: 'rgba(161, 0, 255, 0.03)' }}>
@@ -290,43 +588,60 @@ const ResourceManagement = () => {
                                     borderRadius: 'var(--radius-sm)',
                                     marginBottom: '0.75rem'
                                 }}>
-                                    <div style={{ fontWeight: 500, color: 'var(--accent-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ fontWeight: 500, color: 'var(--accent-primary)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Users size={14} />
                                         {item.assignedTo}
                                     </div>
+                                    <div className="text-xs text-muted" style={{ marginBottom: '0.5rem', marginLeft: '1.4rem' }}>
+                                        {item.resourceRole} • ${item.internalRate}/hr
+                                    </div>
 
-                                    {/* Portfolio Split Visualization */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="text-sm" style={{ marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
-                                                <span style={{ fontWeight: 500 }}>{item.primaryPortfolio || 'Primary Portfolio'}</span>
-                                                <span style={{ color: 'var(--text-muted)' }}>{item.currentAllocation || 70}%</span>
-                                            </div>
-                                            <div style={{ height: '6px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '3px', overflow: 'hidden' }}>
-                                                <div style={{
-                                                    height: '100%',
-                                                    width: `${item.currentAllocation || 70}%`,
-                                                    backgroundColor: 'var(--success)',
-                                                    borderRadius: '3px'
-                                                }}></div>
-                                            </div>
+                                    {/* Utilization Breakdown */}
+                                    <div style={{ marginBottom: '0.75rem' }}>
+                                        <div className="text-xs text-muted" style={{ marginBottom: '0.5rem' }}>Capacity Utilization</div>
+                                        <div style={{ height: '12px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '6px', overflow: 'hidden', display: 'flex' }}>
+                                            {/* Currently Utilized (100 - available) */}
+                                            <div style={{
+                                                height: '100%',
+                                                width: `${100 - (item.currentAllocation || 50)}%`,
+                                                backgroundColor: 'var(--text-muted)',
+                                                opacity: 0.5
+                                            }} title="Currently Utilized"></div>
+                                            {/* New Assignment */}
+                                            <div style={{
+                                                height: '100%',
+                                                width: `${item.suggestedSplit || 25}%`,
+                                                backgroundColor: 'var(--accent-primary)'
+                                            }} title="New Assignment"></div>
+                                            {/* Remaining Available */}
+                                            <div style={{
+                                                height: '100%',
+                                                flex: 1,
+                                                backgroundColor: 'rgba(16, 185, 129, 0.3)'
+                                            }} title="Remaining Available"></div>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.7rem' }}>
+                                            <span style={{ color: 'var(--text-muted)' }}>
+                                                {100 - (item.currentAllocation || 50)}% Utilized
+                                            </span>
+                                            <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>
+                                                +{item.suggestedSplit || 25}% New
+                                            </span>
+                                            <span style={{ color: 'var(--success)' }}>
+                                                {Math.max(0, (item.currentAllocation || 50) - (item.suggestedSplit || 25))}% Free
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="text-sm" style={{ marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
-                                                <span style={{ fontWeight: 500, color: 'var(--accent-primary)' }}>+ {item.targetPortfolio || 'This Portfolio'}</span>
-                                                <span style={{ color: 'var(--accent-primary)' }}>{item.suggestedSplit || 30}%</span>
-                                            </div>
-                                            <div style={{ height: '6px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '3px', overflow: 'hidden' }}>
-                                                <div style={{
-                                                    height: '100%',
-                                                    width: `${item.suggestedSplit || 30}%`,
-                                                    backgroundColor: 'var(--accent-primary)',
-                                                    borderRadius: '3px'
-                                                }}></div>
-                                            </div>
+                                    {/* From/To Labels */}
+                                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem' }}>
+                                        <div>
+                                            <span className="text-muted">From: </span>
+                                            <span style={{ fontWeight: 500 }}>{item.primaryPortfolio || 'Flex Pool'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted">To: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--accent-primary)' }}>{item.targetPortfolio || 'This Portfolio'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -498,38 +813,7 @@ const ResourceManagement = () => {
                 </div>
             )}
 
-
-            {/* Gaps / Unassigned Tasks */}
-            {showGaps && gaps.length > 0 && (
-                <div className="card" style={{ marginBottom: 'var(--spacing-xl)', border: '1px solid var(--warning)', backgroundColor: 'rgba(245, 158, 11, 0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3 className="text-lg" style={{ color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <AlertCircle size={20} /> Resourcing Gaps ({gaps.length})
-                        </h3>
-                        {!assignmentSummary && <button onClick={() => setShowGaps(false)} className="btn-ghost"><X size={20} /></button>}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                        {gaps.map((gap, index) => (
-                            <div key={index} style={{ padding: '0.75rem', backgroundColor: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-tertiary)' }}>
-                                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{gap.taskTitle}</div>
-                                <div className="text-sm text-muted" style={{ marginBottom: '0.5rem' }}>{gap.projectName} • {gap.requiredTeam}</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span className="text-sm" style={{ padding: '0.1rem 0.5rem', borderRadius: '1rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning)' }}>
-                                        {gap.reason}
-                                    </span>
-                                    <span className="text-sm text-muted">{gap.estimate}h</span>
-                                </div>
-                                {gap.hasCrossPortfolioOption && (
-                                    <div className="text-sm" style={{ marginTop: '0.5rem', color: '#10B981' }}>
-                                        ✓ Cross-portfolio option available
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
+            {/* Success message when no gaps (keeping this as it has a close button) */}
             {showGaps && gaps.length === 0 && !assignmentSummary && (
                 <div className="card" style={{ marginBottom: 'var(--spacing-xl)', border: '1px solid var(--success)', backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -557,138 +841,173 @@ const ResourceManagement = () => {
                     </div>
 
                     {/* Column Headers */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1.5fr 1fr', padding: '0.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.875rem', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1.5fr 1fr', padding: '0.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.875rem', borderBottom: '1px solid var(--bg-tertiary)' }}>
                         <div>Name</div>
+                        <div>Studio</div>
                         <div>Primary Portfolio</div>
-                        <div>Allocation</div>
+                        <div>Utilization</div>
                         <div>Other Portfolios</div>
                         <div>Available</div>
                     </div>
 
                     {/* Global Users List */}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {globalResourcePool.map(user => (
-                            <div
-                                key={user.id}
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '2fr 1.5fr 1fr 1.5fr 1fr',
-                                    padding: '1rem',
-                                    borderBottom: '1px solid var(--bg-primary)',
-                                    alignItems: 'center',
-                                    transition: 'background-color 0.2s ease'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)'}
-                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                            >
-                                {/* Name & Role */}
-                                <div>
-                                    <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        {user.name}
-                                        {user.role === 'Admin' && (
-                                            <span style={{
-                                                fontSize: '0.6rem',
-                                                padding: '0.1rem 0.4rem',
-                                                borderRadius: '4px',
-                                                backgroundColor: 'rgba(161, 0, 255, 0.15)',
-                                                color: 'var(--accent-primary)'
+                        {globalResourcePool.map(user => {
+                            const studio = getStudioById?.(user.studio_id);
+                            return (
+                                <div
+                                    key={user.id}
+                                    style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '2fr 1fr 1.5fr 1fr 1.5fr 1fr',
+                                        padding: '1rem',
+                                        borderBottom: '1px solid var(--bg-primary)',
+                                        alignItems: 'center',
+                                        transition: 'background-color 0.2s ease'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)'}
+                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    {/* Name & Role */}
+                                    <div>
+                                        <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            {user.name}
+                                            {user.role === 'Admin' && (
+                                                <span style={{
+                                                    fontSize: '0.6rem',
+                                                    padding: '0.1rem 0.4rem',
+                                                    borderRadius: '4px',
+                                                    backgroundColor: 'rgba(161, 0, 255, 0.15)',
+                                                    color: 'var(--accent-primary)'
+                                                }}>
+                                                    {user.role}
+                                                </span>
+                                            )}
+                                            {user.isFlexible && (
+                                                <span style={{
+                                                    fontSize: '0.6rem',
+                                                    padding: '0.1rem 0.4rem',
+                                                    borderRadius: '4px',
+                                                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                                                    color: '#10B981'
+                                                }}>
+                                                    Flex
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-sm text-muted">{user.email}</div>
+                                    </div>
+
+                                    {/* Studio */}
+                                    <div>
+                                        {studio && (
+                                            <div style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '0.35rem',
+                                                padding: '0.2rem 0.5rem',
+                                                borderRadius: 'var(--radius-sm)',
+                                                backgroundColor: `${studio.theme}15`,
+                                                border: `1px solid ${studio.theme}30`
                                             }}>
-                                                {user.role}
-                                            </span>
+                                                <Building2 size={11} color={studio.theme} />
+                                                <span style={{ fontSize: '0.75rem', color: studio.theme }}>
+                                                    {studio.city}
+                                                </span>
+                                            </div>
                                         )}
                                     </div>
-                                    <div className="text-sm text-muted">{user.email}</div>
-                                </div>
 
-                                {/* Primary Portfolio */}
-                                <div>
-                                    <div style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        padding: '0.25rem 0.75rem',
-                                        borderRadius: 'var(--radius-sm)',
-                                        backgroundColor: user.primaryPortfolio?.theme ? `${user.primaryPortfolio.theme}15` : 'var(--bg-tertiary)',
-                                        border: `1px solid ${user.primaryPortfolio?.theme || 'var(--bg-tertiary)'}30`
-                                    }}>
-                                        <Star size={12} color={user.primaryPortfolio?.theme || 'var(--text-muted)'} fill={user.primaryPortfolio?.theme || 'var(--text-muted)'} />
-                                        <span style={{ fontSize: '0.875rem', color: user.primaryPortfolio?.theme || 'var(--text-primary)' }}>
-                                            {user.primaryPortfolio?.name || 'Unassigned'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Allocation */}
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    {/* Primary Portfolio */}
+                                    <div>
                                         <div style={{
-                                            width: '50px',
-                                            height: '6px',
-                                            backgroundColor: 'var(--bg-tertiary)',
-                                            borderRadius: '3px',
-                                            overflow: 'hidden'
-                                        }}>
-                                            <div style={{
-                                                width: `${user.allocation}%`,
-                                                height: '100%',
-                                                backgroundColor: user.allocation === 100 ? 'var(--success)' : 'var(--accent-primary)',
-                                                transition: 'width 0.3s ease'
-                                            }} />
-                                        </div>
-                                        <span style={{
-                                            fontSize: '0.875rem',
-                                            fontWeight: 500,
-                                            color: user.allocation === 100 ? 'var(--success)' : 'var(--accent-primary)'
-                                        }}>
-                                            {user.allocation}%
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Other Portfolios */}
-                                <div>
-                                    {user.otherPortfolios.length > 0 ? (
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                                            {user.otherPortfolios.map(op => (
-                                                <span
-                                                    key={op.id}
-                                                    style={{
-                                                        fontSize: '0.75rem',
-                                                        padding: '0.15rem 0.5rem',
-                                                        borderRadius: '4px',
-                                                        backgroundColor: `${op.theme}15`,
-                                                        color: op.theme,
-                                                        border: `1px solid ${op.theme}30`
-                                                    }}
-                                                >
-                                                    {op.name} ({op.allocation}%)
-                                                </span>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <span className="text-sm text-muted">—</span>
-                                    )}
-                                </div>
-
-                                {/* Available Capacity */}
-                                <div>
-                                    {user.is_available ? (
-                                        <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
                                             padding: '0.25rem 0.75rem',
                                             borderRadius: 'var(--radius-sm)',
-                                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                            color: 'var(--success)',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 500
+                                            backgroundColor: user.primaryPortfolio?.theme ? `${user.primaryPortfolio.theme}15` : 'var(--bg-tertiary)',
+                                            border: `1px solid ${user.primaryPortfolio?.theme || 'var(--bg-tertiary)'}30`
                                         }}>
-                                            {Math.round(user.capacity_hours * (100 - user.allocation) / 100)}h free
-                                        </span>
-                                    ) : (
-                                        <span className="text-sm text-muted">Fully allocated</span>
-                                    )}
+                                            <Star size={12} color={user.primaryPortfolio?.theme || 'var(--text-muted)'} fill={user.primaryPortfolio?.theme || 'var(--text-muted)'} />
+                                            <span style={{ fontSize: '0.875rem', color: user.primaryPortfolio?.theme || 'var(--text-primary)' }}>
+                                                {user.primaryPortfolio?.name || 'Flex Pool'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Utilization */}
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{
+                                                width: '50px',
+                                                height: '6px',
+                                                backgroundColor: 'var(--bg-tertiary)',
+                                                borderRadius: '3px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <div style={{
+                                                    width: `${user.allocation}%`,
+                                                    height: '100%',
+                                                    backgroundColor: user.allocation === 100 ? 'var(--success)' : 'var(--accent-primary)',
+                                                    transition: 'width 0.3s ease'
+                                                }} />
+                                            </div>
+                                            <span style={{
+                                                fontSize: '0.875rem',
+                                                fontWeight: 500,
+                                                color: user.allocation === 100 ? 'var(--success)' : 'var(--accent-primary)'
+                                            }}>
+                                                {user.allocation}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Other Portfolios */}
+                                    <div>
+                                        {user.otherPortfolios.length > 0 ? (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                                                {user.otherPortfolios.map(op => (
+                                                    <span
+                                                        key={op.id}
+                                                        style={{
+                                                            fontSize: '0.75rem',
+                                                            padding: '0.15rem 0.5rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: `${op.theme}15`,
+                                                            color: op.theme,
+                                                            border: `1px solid ${op.theme}30`
+                                                        }}
+                                                    >
+                                                        {op.name} ({op.allocation}%)
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-sm text-muted">—</span>
+                                        )}
+                                    </div>
+
+                                    {/* Available Capacity */}
+                                    <div>
+                                        {user.is_available ? (
+                                            <span style={{
+                                                padding: '0.25rem 0.75rem',
+                                                borderRadius: 'var(--radius-sm)',
+                                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                                color: 'var(--success)',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 500
+                                            }}>
+                                                {Math.round(user.capacity_hours * (100 - user.allocation) / 100)}h free
+                                            </span>
+                                        ) : (
+                                            <span className="text-sm text-muted">Fully allocated</span>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* Summary */}

@@ -25,4 +25,5 @@ class Organization(Base):
     initiatives: Mapped[list["Initiative"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     teams: Mapped[list["Team"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     markets: Mapped[list["Market"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
-
+    kpi_definitions: Mapped[list["KPIDefinition"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
+    value_gaps: Mapped[list["ValueGap"]] = relationship(back_populates="organization", cascade="all, delete-orphan")

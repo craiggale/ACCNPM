@@ -9,7 +9,7 @@ from jose import jwt, JWTError
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import auth, projects, tasks, resources, initiatives, kvi, admin_resources
+from app.routers import auth, projects, tasks, resources, initiatives, kvi, admin_resources, kpis, ai
 from app.websocket import manager
 
 settings = get_settings()
@@ -48,6 +48,8 @@ app.include_router(resources.router, prefix="/api")
 app.include_router(initiatives.router, prefix="/api")
 app.include_router(kvi.router, prefix="/api")
 app.include_router(admin_resources.router, prefix="/api")
+app.include_router(kpis.router, prefix="/api")
+app.include_router(ai.router, prefix="/api")
 
 
 @app.get("/api/health")

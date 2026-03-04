@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
+import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { format, addMonths } from 'date-fns';
 import { Filter, Calendar, BarChart2, LayoutList } from 'lucide-react';
 import GanttChart from '../GanttChart';
@@ -126,6 +126,34 @@ const PrimaryForecastChart = ({
                 )}
             </div>
 
+            {/* Simple Inline Legend */}
+            {forecastView === 'Resource' && chartFocus === 'Demand' && (
+                <div style={{
+                    display: 'flex',
+                    gap: '20px',
+                    padding: '6px 12px',
+                    marginBottom: '4px',
+                    alignItems: 'center'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '12px', height: '12px', backgroundColor: '#A100FF', borderRadius: '2px' }} />
+                        <span className="text-xs">Demand (within capacity)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '12px', height: '12px', backgroundColor: '#ef4444', borderRadius: '2px' }} />
+                        <span className="text-xs">Over Capacity</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '12px', height: '3px', backgroundColor: '#10b981', borderRadius: '2px' }} />
+                        <span className="text-xs">Portfolio Capacity</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: '12px', height: '3px', borderRadius: '2px', borderStyle: 'dashed', borderWidth: '1px', borderColor: '#06b6d4', backgroundColor: 'transparent' }} />
+                        <span className="text-xs text-muted">Global Capacity (cross-portfolio)</span>
+                    </div>
+                </div>
+            )}
+
             <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 {forecastView === 'Resource' && (
                     (!data || data.length === 0) ? (
@@ -240,54 +268,50 @@ const PrimaryForecastChart = ({
                                 {/* DEMAND FOCUS VIEW */}
                                 {chartFocus === 'Demand' && (
                                     <>
+                                        {/* Demand within capacity - purple */}
                                         <Bar
-                                            dataKey="fixedDemand"
-                                            name="Base Demand"
-                                            stackId="a"
+                                            dataKey="demandWithinCapacity"
+                                            name="Demand"
+                                            stackId="demand"
                                             fill="url(#demandGradient)"
                                             radius={[0, 0, 0, 0]}
                                         />
+                                        {/* Demand overflow - red (starts at capacity line) */}
                                         <Bar
-                                            dataKey="flexibleDemand"
-                                            name="Resource Driven"
-                                            stackId="a"
-                                            fill="url(#flexDemandGradient)"
+                                            dataKey="demandOverflow"
+                                            name="Over Capacity"
+                                            stackId="demand"
+                                            fill="url(#demandOverloadGradient)"
                                             radius={[6, 6, 0, 0]}
-                                            animationDuration={800}
-                                        >
-                                            {data.map((entry, index) => (
-                                                <Cell
-                                                    key={`cell-${index}`}
-                                                    fill={(entry.fixedDemand + entry.flexibleDemand) > entry.projectedCapacity ? 'url(#demandOverloadGradient)' : 'url(#flexDemandGradient)'}
-                                                />
-                                            ))}
-                                        </Bar>
-                                        {planningMode === 'ResourceFirst' && (
-                                            <Bar
-                                                dataKey="unusedCapacity"
-                                                name="Unused Capacity"
-                                                stackId="a"
-                                                fill="rgba(16, 185, 129, 0.1)" // Very faint green
-                                                stroke="rgba(16, 185, 129, 0.3)"
-                                                strokeDasharray="3 3"
-                                                radius={[6, 6, 0, 0]}
-                                            />
-                                        )}
+                                        />
 
                                         {/* Ghost bar for Base Capacity if different */}
                                         {data[0]?.projectedCapacity !== data[0]?.baseCapacity && (
                                             <Line type="stepAfter" dataKey="baseCapacity" name="Original Capacity" stroke="var(--text-muted)" strokeDasharray="3 3" dot={false} strokeOpacity={0.5} />
                                         )}
-                                        {/* Capacity Line */}
+                                        {/* Capacity Line (Portfolio) */}
                                         <Line
                                             type="stepAfter"
                                             dataKey="projectedCapacity"
-                                            name="Capacity"
+                                            name="Portfolio Capacity"
                                             stroke="#10B981"
                                             strokeWidth={3}
                                             dot={false}
                                             animationDuration={1000}
                                         />
+                                        {/* Global Capacity Reference Line */}
+                                        {data[0]?.globalCapacity > data[0]?.projectedCapacity && (
+                                            <Line
+                                                type="stepAfter"
+                                                dataKey="globalCapacity"
+                                                name="Global Capacity"
+                                                stroke="#06b6d4"
+                                                strokeWidth={2}
+                                                strokeDasharray="6 4"
+                                                dot={false}
+                                                strokeOpacity={0.7}
+                                            />
+                                        )}
                                     </>
                                 )}
 

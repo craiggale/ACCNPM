@@ -12,6 +12,7 @@ import ResourceManagement from './pages/ResourceManagement';
 import Admin from './pages/Admin';
 import LaunchStatus from './pages/LaunchStatus';
 import KVITracking from './pages/KVITracking';
+import ExecutiveDashboard from './pages/ExecutiveDashboard';
 import Initiatives from './pages/Initiatives';
 import MyAccount from './pages/MyAccount';
 
@@ -55,11 +56,13 @@ function AppRoutes() {
                 <Layout>
                   <Routes>
                     <Route path="/" element={<ScenarioPlanner />} />
+                    <Route path="/scenario-planner" element={<ScenarioPlanner />} />
                     <Route path="/track" element={<ProjectDashboard />} />
                     <Route path="/launch-status" element={<LaunchStatus />} />
                     <Route path="/learn" element={<AnalyticsEngine />} />
                     <Route path="/resources" element={<ResourceManagement />} />
                     <Route path="/kvi-tracking" element={<KVITracking />} />
+                    <Route path="/executive" element={<ExecutiveDashboard />} />
                     <Route path="/initiatives" element={<Initiatives />} />
                     <Route path="/my-account" element={<MyAccount />} />
                     <Route path="/admin" element={<Admin />} />
